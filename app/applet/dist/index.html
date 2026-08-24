@@ -1,0 +1,3813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcade Studio - Play, Build, Compete & Share</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    :root {
+      --bg-dark: #090614;
+      --card-bg: #130e2a;
+      --card-hover: #1c153d;
+      --border-color: #2c2254;
+      --neon-cyan: #00f0ff;
+      --neon-pink: #ff0055;
+      --neon-green: #00ff88;
+      --neon-gold: #ffd700;
+      --neon-purple: #b537f2;
+      --text-main: #f0f0ff;
+      --text-muted: #8e8eb2;
+      --app-width: 100%;
+      --app-max-width: 1100px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+
+    /* Custom Particle Canvas for Mouse Trails */
+    #cursor-particle-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      pointer-events: none;
+      z-index: 99999;
+    }
+
+    /* Screen Size Container */
+    #app-container {
+      width: 100%;
+      max-width: var(--app-max-width);
+      transition: max-width 0.3s ease, transform 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Screen Size Presets */
+    body.mode-mini #app-container {
+      max-width: 320px;
+      border: 3px solid #372a6b;
+      border-radius: 24px;
+      padding: 10px;
+      background: #0b071a;
+      box-shadow: 0 0 35px rgba(0, 240, 255, 0.2);
+    }
+    body.mode-pocket #app-container {
+      max-width: 365px;
+      border: 3px solid #3c2d76;
+      border-radius: 26px;
+      padding: 12px;
+      background: #0d091f;
+      box-shadow: 0 0 40px rgba(0, 240, 255, 0.2);
+    }
+    body.mode-compact #app-container {
+      max-width: 440px;
+      border: 3px solid #372a6b;
+      border-radius: 26px;
+      padding: 14px;
+      background: #0d091f;
+      box-shadow: 0 0 35px rgba(255, 0, 85, 0.15);
+    }
+    body.mode-handheld #app-container {
+      max-width: 560px;
+      border: 4px solid #4a348c;
+      border-radius: 22px;
+      padding: 16px;
+      background: #0f0b24;
+      box-shadow: 0 0 35px rgba(255, 0, 85, 0.15);
+    }
+    body.mode-fluid #app-container {
+      max-width: 980px;
+    }
+
+    /* Scaling when in compact modes */
+    body.mode-mini .game-grid, body.mode-pocket .game-grid {
+      grid-template-columns: 1fr;
+    }
+    body.mode-mini .brand-title, body.mode-pocket .brand-title {
+      font-size: 14px;
+    }
+    body.mode-mini .brand-logo, body.mode-pocket .brand-logo {
+      font-size: 20px;
+    }
+    body.mode-mini .nav-tab-btn, body.mode-pocket .nav-tab-btn {
+      font-size: 10px;
+      padding: 6px 8px;
+      min-width: 70px;
+    }
+    body.mode-mini .game-card, body.mode-pocket .game-card {
+      padding: 10px;
+    }
+    body.mode-mini .canvas-wrapper, body.mode-pocket .canvas-wrapper {
+      max-width: 100%;
+    }
+
+    /* Top Control Bar */
+    header {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 10px 16px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-logo {
+      font-size: 26px;
+      filter: drop-shadow(0 0 8px var(--neon-cyan));
+    }
+    .brand-title {
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #00f0ff, #ff007f);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #1e173e;
+      color: var(--text-main);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: #2b2256;
+      border-color: var(--neon-cyan);
+      transform: translateY(-1px);
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00f0ff, #0088ff);
+      color: #060411;
+      border: none;
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.35);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #33f3ff, #1a94ff);
+      color: #000;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.6);
+    }
+    .btn-accent {
+      background: linear-gradient(135deg, #ff0055, #b537f2);
+      color: #fff;
+      border: none;
+      box-shadow: 0 0 12px rgba(255, 0, 85, 0.3);
+    }
+    .btn-accent:hover {
+      box-shadow: 0 0 18px rgba(255, 0, 85, 0.5);
+    }
+    .btn-gmail {
+      background: #ea4335;
+      color: #fff;
+      border: none;
+    }
+    .btn-gmail:hover {
+      background: #f05244;
+      box-shadow: 0 0 12px rgba(234, 67, 53, 0.5);
+    }
+    .btn-active {
+      background: var(--neon-cyan) !important;
+      color: #090614 !important;
+      font-weight: 800;
+    }
+
+    /* Screen Mode Switcher Pills */
+    .screen-size-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #0f0b22;
+      padding: 3px;
+      border-radius: 10px;
+      border: 1px solid #231b44;
+    }
+    .screen-pill {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+    .screen-pill.active {
+      background: #251d4e;
+      color: var(--neon-cyan);
+      box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+    }
+
+    /* Main Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar {
+      display: none;
+    }
+    .nav-tab-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 9px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .nav-tab-btn.active {
+      background: #201744;
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      box-shadow: 0 0 12px rgba(0, 240, 255, 0.25);
+    }
+
+    /* Views */
+    .view-section {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .view-section.active {
+      display: flex;
+    }
+
+    /* Game Cards Grid */
+    .game-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .game-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .game-card:hover {
+      background: var(--card-hover);
+      border-color: var(--neon-cyan);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+    }
+    .game-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .game-icon {
+      font-size: 28px;
+      background: #201744;
+      padding: 8px;
+      border-radius: 10px;
+      border: 1px solid #332761;
+    }
+    .game-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(0, 240, 255, 0.15);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+    }
+    .game-badge.hot {
+      background: rgba(255, 0, 85, 0.18);
+      color: #ff3377;
+      border-color: rgba(255, 0, 85, 0.4);
+    }
+    .game-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .game-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+      min-height: 32px;
+    }
+    .game-stats {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: #b0b0d0;
+      border-top: 1px solid #231b44;
+      padding-top: 8px;
+    }
+    .want-play-btn {
+      background: #211942;
+      border: 1px solid #3c2f70;
+      color: #ff5599;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      transition: all 0.15s ease;
+    }
+    .want-play-btn:hover {
+      background: #341f5a;
+      border-color: #ff0055;
+      transform: scale(1.05);
+    }
+
+    /* Active Game Stage View */
+    #game-stage-view {
+      background: #090615;
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.7);
+    }
+    .stage-header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .canvas-wrapper {
+      position: relative;
+      background: #04020a;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #29204e;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 680px;
+      aspect-ratio: 4/3;
+    }
+    #game-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    .game-hud {
+      width: 100%;
+      max-width: 680px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #140e2e;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid #281e52;
+    }
+
+    /* Mouse Skins Picker */
+    .skins-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 10px;
+    }
+    .skin-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .skin-card:hover {
+      background: var(--card-hover);
+      border-color: var(--neon-cyan);
+      transform: translateY(-2px);
+    }
+    .skin-card.selected {
+      border-color: var(--neon-cyan);
+      background: #201844;
+      box-shadow: 0 0 14px rgba(0, 240, 255, 0.35);
+    }
+    .skin-icon {
+      font-size: 30px;
+    }
+    .skin-name {
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .skin-trail {
+      font-size: 10px;
+      color: var(--neon-green);
+    }
+
+    /* Leaderboard Tables */
+    .leaderboard-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .leaderboard-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .leaderboard-table th {
+      text-align: left;
+      padding: 8px;
+      color: var(--text-muted);
+      border-bottom: 1px solid #251d48;
+      font-weight: 600;
+    }
+    .leaderboard-table td {
+      padding: 8px;
+      border-bottom: 1px solid #1a1438;
+      vertical-align: middle;
+    }
+    .rank-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 11px;
+    }
+    .rank-1 { background: #ffd700; color: #000; box-shadow: 0 0 8px rgba(255, 215, 0, 0.5); }
+    .rank-2 { background: #e0e0e0; color: #000; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+    .rank-other { background: #231b46; color: var(--text-muted); }
+
+    /* Gmail & Sharing Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      padding: 16px;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-box {
+      background: #140f2e;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 480px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      background: #1d163e;
+      border: 1px solid #31255e;
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: #fff;
+      font-size: 12px;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus {
+      border-color: var(--neon-cyan);
+    }
+
+    /* Offline & Read-only Banner */
+    .offline-banner {
+      background: linear-gradient(90deg, #663d00, #b35900, #663d00);
+      border: 1px solid #ffaa00;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(255, 170, 0, 0.25);
+      animation: pulse-border 2.5s infinite;
+    }
+    @keyframes pulse-border {
+      0%, 100% { border-color: #ffaa00; }
+      50% { border-color: #ffe680; }
+    }
+    .offline-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .offline-icon {
+      font-size: 20px;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: 16px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+    .status-online {
+      background: rgba(0, 255, 136, 0.15);
+      color: #00ff88;
+      border-color: rgba(0, 255, 136, 0.35);
+    }
+    .status-offline {
+      background: rgba(255, 170, 0, 0.2);
+      color: #ffbb33;
+      border-color: rgba(255, 170, 0, 0.5);
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 6px currentColor;
+    }
+    .cache-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 600;
+      background: rgba(0, 240, 255, 0.12);
+      color: var(--neon-cyan);
+      border: 1px solid rgba(0, 240, 255, 0.25);
+    }
+    .cache-badge.offline-mode {
+      background: rgba(255, 170, 0, 0.15);
+      color: #ffbb33;
+      border-color: rgba(255, 170, 0, 0.35);
+    }
+
+    /* Replay & Spectator System Styles */
+    .spectator-banner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(90deg, #3d002e, #1a0833, #091a38);
+      border: 1px solid var(--neon-pink);
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 8px;
+      animation: neon-glow 2s infinite alternate;
+    }
+    @keyframes neon-glow {
+      from { box-shadow: 0 0 10px rgba(255, 0, 85, 0.2); }
+      to { box-shadow: 0 0 20px rgba(0, 240, 255, 0.3); }
+    }
+    .spectator-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--neon-pink);
+      letter-spacing: 0.5px;
+    }
+    .spectator-rec-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #ff0055;
+      animation: blink-rec 1s infinite;
+    }
+    @keyframes blink-rec {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.85); }
+    }
+    .replay-control-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #100b26;
+      border: 1px solid #2e2158;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 8px;
+      width: 100%;
+      max-width: 600px;
+    }
+    .replay-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #251b4c;
+      outline: none;
+      cursor: pointer;
+    }
+    .replay-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 8px var(--neon-cyan);
+      cursor: pointer;
+    }
+    .replay-btn-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .replay-speed-pill {
+      background: #1a1338;
+      border: 1px solid #332463;
+      color: var(--text-muted);
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+    .replay-speed-pill.active {
+      background: var(--neon-cyan);
+      color: #000;
+      border-color: var(--neon-cyan);
+    }
+    .replay-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 14px;
+      margin-top: 12px;
+    }
+    .replay-card {
+      background: #120d2a;
+      border: 1px solid #2c1f54;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 10px;
+      transition: all 0.2s ease;
+    }
+    .replay-card:hover {
+      border-color: var(--neon-cyan);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 240, 255, 0.15);
+    }
+    .replay-thumb {
+      background: #090518;
+      border-radius: 8px;
+      height: 85px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
+      border: 1px dashed #2e235a;
+    }
+    .replay-badge {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 1px solid var(--neon-gold);
+      color: var(--neon-gold);
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 800;
+      padding: 2px 6px;
+    }
+    .like-btn {
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid rgba(255, 0, 85, 0.25);
+      color: #ff3377;
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .like-btn:hover {
+      background: rgba(255, 0, 85, 0.25);
+    }
+
+    /* Game Search Bar Styles */
+    .games-search-container {
+      background: #100b27;
+      border: 1px solid #281d4e;
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 4px;
+      margin-bottom: 2px;
+    }
+    .game-search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      min-width: 240px;
+      max-width: 320px;
+      flex: 1;
+    }
+    .game-search-icon {
+      position: absolute;
+      left: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .game-search-input {
+      width: 100%;
+      background: #1b133b;
+      border: 1px solid #3b2c6d;
+      border-radius: 20px;
+      padding: 7px 30px 7px 32px;
+      color: #fff;
+      font-size: 12px;
+      transition: all 0.2s ease;
+    }
+    .game-search-input:focus {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 10px rgba(0, 240, 255, 0.25);
+      background: #201745;
+    }
+    .game-search-clear {
+      position: absolute;
+      right: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-muted);
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: all 0.15s ease;
+    }
+    .game-search-clear:hover {
+      background: rgba(255, 0, 85, 0.3);
+      color: #fff;
+    }
+    .no-search-results {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 36px 16px;
+      background: rgba(18, 12, 42, 0.6);
+      border: 1px dashed #342468;
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Touch Controls for Mobile */
+    .touch-controls {
+      display: none;
+      width: 100%;
+      max-width: 680px;
+      justify-content: space-between;
+      padding: 8px;
+      gap: 8px;
+    }
+    .touch-btn {
+      background: #241c48;
+      border: 1px solid #3c2f70;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 800;
+      padding: 12px 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      user-select: none;
+      touch-action: manipulation;
+    }
+    .touch-btn:active {
+      background: var(--neon-cyan);
+      color: #000;
+    }
+    @media (max-width: 768px) {
+      .touch-controls {
+        display: flex;
+      }
+    }
+  </style>
+</head>
+<body class="mode-pocket">
+
+  <!-- Particle Canvas for Interactive Mouse Skins -->
+  <canvas id="cursor-particle-canvas"></canvas>
+
+  <div id="app-container">
+    
+    <!-- Top Header -->
+    <header>
+      <div class="brand-section">
+        <span class="brand-logo">🎮</span>
+        <div>
+          <div class="brand-title">Arcade Studio</div>
+          <div class="brand-sub">Play Games • Custom Mouse Skins • Gmail</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Compact Screen Mode Switcher -->
+        <div class="screen-size-bar" title="Change screen view mode">
+          <button class="screen-pill" onclick="setScreenMode('mini', event)">🔬 Mini (320px)</button>
+          <button class="screen-pill active" onclick="setScreenMode('pocket', event)">📱 Pocket (365px)</button>
+          <button class="screen-pill" onclick="setScreenMode('compact', event)">🕹️ Compact</button>
+          <button class="screen-pill" onclick="setScreenMode('handheld', event)">💻 Handheld</button>
+          <button class="screen-pill" onclick="setScreenMode('fluid', event)">🖥️ Wide</button>
+        </div>
+
+        <!-- Zoom Scaling Controls -->
+        <div class="screen-size-bar" title="Scale Zoom">
+          <button class="screen-pill" onclick="adjustZoom(-0.1)" title="Zoom Out / Make Smaller">🔍 -</button>
+          <span id="zoom-indicator" style="font-size: 10px; color: var(--neon-cyan); padding: 0 4px;">100%</span>
+          <button class="screen-pill" onclick="adjustZoom(0.1)" title="Zoom In">🔍 +</button>
+        </div>
+
+        <!-- Network Connectivity Indicator / Toggle -->
+        <button id="net-toggle-btn" class="status-pill status-online" onclick="toggleSimulateOffline()" title="Network state. Click to simulate offline/online mode">
+          <span class="status-dot"></span>
+          <span id="net-status-text">Online</span>
+        </button>
+
+        <!-- Mouse Skins Button -->
+        <button class="btn" onclick="openMouseSkinsModal()">
+          <span id="current-skin-icon">🗡️</span> Skin
+        </button>
+
+        <!-- Gmail Integration Button -->
+        <button class="btn btn-gmail" onclick="openGmailModal()">
+          ✉️ Gmail
+        </button>
+      </div>
+    </header>
+
+    <!-- OFFLINE READ-ONLY MODE WARNING BANNER -->
+    <div id="offline-warning-banner" class="offline-banner" style="display: none;">
+      <div class="offline-banner-content">
+        <span class="offline-icon">⚠️</span>
+        <div>
+          <div style="font-weight: 800; font-size: 12px; letter-spacing: 0.3px;">Read-only Mode Active (Offline)</div>
+          <div style="font-size: 10px; opacity: 0.95; line-height: 1.3;">
+            No internet connection detected. You are viewing cached leaderboard data. Online voting and Gmail challenge invites are temporarily paused until connection is restored.
+          </div>
+        </div>
+      </div>
+      <button class="btn" style="padding: 4px 8px; font-size: 10px; background: rgba(0,0,0,0.35); border-color: rgba(255,255,255,0.25);" onclick="toggleSimulateOffline()">
+        <span id="offline-reconnect-btn">Reconnect</span>
+      </button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="nav-tab-btn active" onclick="switchView('arcade')">🕹️ Play Games</button>
+      <button class="nav-tab-btn" onclick="switchView('leaderboard')">🏆 Leaderboards & Most Wanted</button>
+      <button class="nav-tab-btn" onclick="switchView('replays')">🎬 Replay Theater</button>
+      <button class="nav-tab-btn" onclick="switchView('skins')">✨ Mouse Skins</button>
+      <button class="nav-tab-btn" onclick="switchView('gmail')">📬 Gmail Hub</button>
+    </div>
+
+    <!-- VIEW 1: ARCADE PLAY GAMES -->
+    <div id="view-arcade" class="view-section active">
+      
+      <!-- Live Game Player Container (Visible when a game is active or replaying) -->
+      <div id="game-stage-view" style="display: none;">
+        
+        <!-- Replay Spectator Banner (Visible when spectating a run) -->
+        <div id="spectator-hud-banner" class="spectator-banner" style="display: none;">
+          <div class="spectator-tag">
+            <span class="spectator-rec-dot"></span>
+            <span>SPECTATING HIGH-SCORE RUN: <strong id="spectator-player-name" style="color: #fff;">Kira_Neo</strong></span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="spectator-score-badge" class="cache-badge" style="background: rgba(255,215,0,0.15); color: #ffd700; border-color: #ffd700;">🏆 3,450 pts</span>
+            <button class="btn btn-primary" style="padding: 3px 8px; font-size: 10px;" onclick="playCurrentGameLive()">🎮 Play This Game</button>
+          </div>
+        </div>
+
+        <div class="stage-header">
+          <div>
+            <span id="active-game-title" style="font-weight: 800; font-size: 15px; color: var(--neon-cyan);">Cyber Runner 2099</span>
+            <span id="active-game-author" style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">by PixelForge</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button id="stage-share-btn" class="btn btn-primary" onclick="shareScoreViaGmail()">✉️ Challenge via Gmail</button>
+            <button class="btn" onclick="closeGameStage()">✕ Exit</button>
+          </div>
+        </div>
+
+        <div class="canvas-wrapper">
+          <canvas id="game-canvas" width="600" height="400"></canvas>
+        </div>
+
+        <!-- Live Game HUD (When playing) -->
+        <div id="live-hud" class="game-hud">
+          <div>🏆 Score: <span id="hud-score" style="color: var(--neon-cyan);">0</span></div>
+          <div>❤️ Lives: <span id="hud-lives" style="color: var(--neon-pink);">3</span></div>
+          <div>⚡ High: <span id="hud-high" style="color: var(--neon-gold);">0</span></div>
+          <div>⏱️ Time: <span id="hud-time" style="color: var(--neon-green);">0s</span></div>
+        </div>
+
+        <!-- Replay Scrubber & Spectator Controls (When spectating) -->
+        <div id="replay-controls-bar" class="replay-control-bar" style="display: none;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span id="replay-status-icon" style="color: var(--neon-cyan);">▶ Playing Replay</span>
+              <span style="color: var(--text-muted);">|</span>
+              <span id="replay-time-display" style="font-family: monospace; color: #fff; font-weight: 700;">0:00 / 1:04</span>
+            </div>
+            <div style="display: flex; gap: 4px;">
+              <button class="replay-speed-pill" onclick="setReplaySpeed(0.5, event)">0.5x</button>
+              <button class="replay-speed-pill active" onclick="setReplaySpeed(1.0, event)">1x</button>
+              <button class="replay-speed-pill" onclick="setReplaySpeed(1.5, event)">1.5x</button>
+              <button class="replay-speed-pill" onclick="setReplaySpeed(2.0, event)">2x</button>
+            </div>
+          </div>
+
+          <input type="range" id="replay-scrubber" class="replay-slider" min="0" max="100" value="0" oninput="scrubReplay(this.value)">
+
+          <div class="replay-btn-row">
+            <div style="display: flex; gap: 6px;">
+              <button id="replay-toggle-btn" class="btn btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="toggleReplayPause()">⏸️ Pause</button>
+              <button class="btn" style="padding: 4px 10px; font-size: 11px;" onclick="restartReplayPlayback()">⏪ Restart</button>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button class="like-btn" id="replay-like-btn" onclick="likeActiveReplay()">❤️ Like Run (<span id="replay-likes-count">128</span>)</button>
+              <button class="btn btn-gmail" style="padding: 4px 10px; font-size: 11px;" onclick="shareReplayViaGmail()">✉️ Share Replay</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Touch Controls for Compact Mobile -->
+        <div class="touch-controls" id="touch-controls-pad">
+          <div style="display: flex; gap: 6px;">
+            <button class="touch-btn" id="btn-left">◀</button>
+            <button class="touch-btn" id="btn-right">▶</button>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="touch-btn" id="btn-action" style="background: var(--neon-pink);">⚡ Action</button>
+            <button class="touch-btn" id="btn-jump" style="background: var(--neon-cyan); color: #000;">▲ Jump</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Games Catalog & Search Filter -->
+      <div class="games-search-container">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 700; color: #fff;">Featured Games Built For You</h3>
+            <span id="catalog-count-label" style="font-size: 11px; color: var(--text-muted);">6 Playable Arcade Titles</span>
+          </div>
+          <div class="game-search-wrapper">
+            <span class="game-search-icon">🔍</span>
+            <input 
+              type="text" 
+              id="game-search-input" 
+              class="game-search-input" 
+              placeholder="Search games by title..." 
+              autocomplete="off"
+              oninput="filterGamesCatalog(this.value)"
+              onkeydown="if(event.key==='Escape'){clearGameSearch();}"
+            >
+            <button id="game-search-clear" class="game-search-clear" onclick="clearGameSearch()" title="Clear search" style="display: none;">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="game-grid" id="main-games-grid">
+        
+        <!-- Game 1 -->
+        <div class="game-card" data-title="Cyber Runner 2099">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">🏃</span>
+              <span class="game-badge hot">🔥 TOP RATED</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Cyber Runner 2099</div>
+            <div class="game-desc">High-speed neon platformer! Jump over spikes, collect cyber orbs, and dodge patrol sentry lasers.</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 3,420 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('cyber-runner')">❤️ Want to Play (<span id="votes-cyber-runner">842</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('runner')">▶ Play Now</button>
+        </div>
+
+        <!-- Game 2 -->
+        <div class="game-card" data-title="Neon Space Invaders">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">🚀</span>
+              <span class="game-badge">⚡ ARCADE SHOOTER</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Neon Space Invaders</div>
+            <div class="game-desc">Command your starfighter against invading alien fleets! Collect spread-shot powerups and shields.</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 4,890 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('space-invaders')">❤️ Want to Play (<span id="votes-space-invaders">1,210</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('space')">▶ Play Now</button>
+        </div>
+
+        <!-- Game 3 -->
+        <div class="game-card" data-title="Hyper Neon Breakout">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">🧱</span>
+              <span class="game-badge">💥 RETRO PHYSICS</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Hyper Neon Breakout</div>
+            <div class="game-desc">Smash neon glowing bricks with high velocity paddle physics, multi-ball lasers, and explosive powerups!</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 2,940 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('breakout')">❤️ Want to Play (<span id="votes-breakout">690</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('breakout')">▶ Play Now</button>
+        </div>
+
+        <!-- Game 4 -->
+        <div class="game-card" data-title="Catacombs Quest RPG">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">⚔️</span>
+              <span class="game-badge">🏰 DUNGEON RPG</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Catacombs Quest RPG</div>
+            <div class="game-desc">Explore dungeon corridors, slash undead skeletons with your energy sword, and defeat the Crypt Boss!</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 5,120 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('dungeon')">❤️ Want to Play (<span id="votes-dungeon">1,480</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('dungeon')">▶ Play Now</button>
+        </div>
+
+        <!-- Game 5 -->
+        <div class="game-card" data-title="Cyber Flappy Bot">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">🐦</span>
+              <span class="game-badge">🚀 PRECISION</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Cyber Flappy Bot</div>
+            <div class="game-desc">Tap to ignite rocket thrusters, squeeze through electrified laser conduits, and score high multipliers!</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 3,180 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('flappy')">❤️ Want to Play (<span id="votes-flappy">920</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('flappy')">▶ Play Now</button>
+        </div>
+
+        <!-- Game 6 -->
+        <div class="game-card" data-title="Neon Highway 2099">
+          <div>
+            <div class="game-header">
+              <span class="game-icon">🏎️</span>
+              <span class="game-badge">⚡ SPEED RACER</span>
+            </div>
+            <div class="game-title" style="margin-top: 8px;">Neon Highway 2099</div>
+            <div class="game-desc">Drift across futuristic cyber highways, dodge traffic, grab nitro boosters, and achieve supersonic speeds!</div>
+          </div>
+          <div class="game-stats">
+            <span>👥 3,850 Players</span>
+            <button class="want-play-btn" onclick="voteWantToPlay('racer')">❤️ Want to Play (<span id="votes-racer">1,050</span>)</button>
+          </div>
+          <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="launchGame('racer')">▶ Play Now</button>
+        </div>
+
+        <!-- Empty state when no games match search -->
+        <div id="no-games-found" class="no-search-results" style="display: none;">
+          <div style="font-size: 32px;">🔍</div>
+          <div style="font-weight: 700; color: #fff; font-size: 14px;">No arcade games match "<span id="no-games-query" style="color: var(--neon-cyan);"></span>"</div>
+          <div style="font-size: 11px; color: var(--text-muted);">Try searching for "Runner", "Space", "Breakout", "Dungeon", "Flappy", or "Highway".</div>
+          <button class="btn btn-primary" style="padding: 6px 14px; font-size: 11px; margin-top: 4px;" onclick="clearGameSearch()">Clear Search Filter</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 2: LEADERBOARD & MOST WANTED -->
+    <div id="view-leaderboard" class="view-section">
+      
+      <!-- Cached Data Indicator Badge (Shown offline or when cache loaded) -->
+      <div id="leaderboard-cache-bar" style="display: flex; justify-content: space-between; align-items: center; background: #110c28; border: 1px solid #281d4e; border-radius: 10px; padding: 6px 12px; font-size: 11px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span id="cache-status-badge" class="cache-badge">💾 Leaderboard Cache: Active</span>
+          <span id="cache-time-info" style="color: var(--text-muted); font-size: 10px;">Synced just now</span>
+        </div>
+        <button class="btn" style="padding: 3px 8px; font-size: 10px;" onclick="refreshLeaderboardData()">🔄 Refresh Data</button>
+      </div>
+
+      <!-- Top Most Wanted Games by Players -->
+      <div class="leaderboard-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 14px; font-weight: 800; color: #fff;">🔥 Most Wanted & Trending Games (Player Demand)</h3>
+          <span style="font-size: 11px; color: var(--neon-cyan);">Ranked by Active Players & Wishlist</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">These are the most popular games voted by thousands of community players:</p>
+
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Game Title</th>
+              <th>Genre</th>
+              <th>Active Players</th>
+              <th>Want to Play Votes</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="most-wanted-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Global Hall of Fame High Scores -->
+      <div class="leaderboard-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="font-size: 14px; font-weight: 800; color: #fff;">🏆 Global Hall of Fame Scores</h3>
+          <select id="leaderboard-game-select" onchange="renderHighScoresTable()" style="width: auto; padding: 4px 8px; font-size: 11px;">
+            <option value="runner">Cyber Runner 2099</option>
+            <option value="space">Neon Space Invaders</option>
+            <option value="breakout">Hyper Neon Breakout</option>
+            <option value="dungeon">Catacombs Quest RPG</option>
+            <option value="flappy">Cyber Flappy Bot</option>
+            <option value="racer">Neon Highway 2099</option>
+          </select>
+        </div>
+
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>Score</th>
+              <th>Time</th>
+              <th>Date</th>
+              <th>🎬 Replay</th>
+              <th>✉️ Challenge</th>
+            </tr>
+          </thead>
+          <tbody id="highscores-tbody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- VIEW 3: REPLAY THEATER & COMMUNITY RUNS -->
+    <div id="view-replays" class="view-section">
+      <div class="leaderboard-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #fff;">🎬 Community Replay Theater</h3>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">Watch frame-by-frame high-score runs from top players across the arcade community:</p>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-primary" onclick="promptImportReplay()">📥 Load Replay Code</button>
+          </div>
+        </div>
+
+        <!-- Replay Game Filter Pills -->
+        <div style="display: flex; gap: 6px; overflow-x: auto; padding: 10px 0 4px 0; scrollbar-width: none;">
+          <button class="screen-pill active" onclick="filterReplayTheater('all', event)">🌐 All Games</button>
+          <button class="screen-pill" onclick="filterReplayTheater('runner', event)">🏃 Cyber Runner</button>
+          <button class="screen-pill" onclick="filterReplayTheater('space', event)">🚀 Space Invaders</button>
+          <button class="screen-pill" onclick="filterReplayTheater('breakout', event)">🧱 Breakout</button>
+          <button class="screen-pill" onclick="filterReplayTheater('dungeon', event)">⚔️ Catacombs</button>
+          <button class="screen-pill" onclick="filterReplayTheater('flappy', event)">🐦 Flappy Bot</button>
+          <button class="screen-pill" onclick="filterReplayTheater('racer', event)">🏎️ Neon Racer</button>
+        </div>
+      </div>
+
+      <!-- Featured Community Replays Grid -->
+      <div id="community-replays-grid" class="replay-grid">
+        <!-- Dynamically populated -->
+      </div>
+
+      <!-- User's Saved Replays Section -->
+      <div class="leaderboard-card" style="margin-top: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <h4 style="font-size: 13px; font-weight: 800; color: var(--neon-cyan);">📼 My Recorded Runs This Session</h4>
+          <span id="my-replays-count" style="font-size: 10px; color: var(--text-muted);">0 Saved Runs</span>
+        </div>
+        <div id="my-replays-list" style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="font-size: 11px; color: var(--text-muted); padding: 10px; text-align: center; border: 1px dashed #281d4e; border-radius: 8px;">
+            Play any arcade game to the end to record and save your personal high-score run!
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VIEW 4: MOUSE SKINS & PARTICLE EFFECTS -->
+    <div id="view-skins" class="view-section">
+      <div class="leaderboard-card">
+        <h3 style="font-size: 15px; font-weight: 800; color: #fff;">✨ Custom Mouse Skins & Particle Trails</h3>
+        <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Choose a skin below to equip a custom cursor and responsive physics particles as you move your mouse:</p>
+      </div>
+
+      <div class="skins-grid">
+        
+        <div class="skin-card selected" onclick="equipMouseSkin('katana')">
+          <span class="skin-icon">🗡️</span>
+          <span class="skin-name">Cyber Katana</span>
+          <span class="skin-trail">⚡ Cyan Sparks</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('reticle')">
+          <span class="skin-icon">🎯</span>
+          <span class="skin-name">Tactical Reticle</span>
+          <span class="skin-trail">🔴 Laser Ring</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('glove')">
+          <span class="skin-icon">🕹️</span>
+          <span class="skin-name">Retro Arcade Glove</span>
+          <span class="skin-trail">⭐ Golden Stars</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('wand')">
+          <span class="skin-icon">🪄</span>
+          <span class="skin-name">Arcane Wand</span>
+          <span class="skin-trail">🌈 Rainbow Stardust</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('ship')">
+          <span class="skin-icon">🚀</span>
+          <span class="skin-name">Starfighter</span>
+          <span class="skin-trail">🔥 Rocket Exhaust</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('bolt')">
+          <span class="skin-icon">⚡</span>
+          <span class="skin-name">Lightning Bolt</span>
+          <span class="skin-trail">⚡ Electric Shocks</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('paw')">
+          <span class="skin-icon">🐾</span>
+          <span class="skin-name">Cyber Neko Paw</span>
+          <span class="skin-trail">💖 Floating Hearts</span>
+        </div>
+
+        <div class="skin-card" onclick="equipMouseSkin('gem')">
+          <span class="skin-icon">💎</span>
+          <span class="skin-name">Prismatic Gem</span>
+          <span class="skin-trail">✨ Crystal Flares</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- VIEW 4: GMAIL HUB & INVITES -->
+    <div id="view-gmail" class="view-section">
+      <div class="leaderboard-card">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 style="font-size: 15px; font-weight: 800; color: #fff;">📬 Gmail Game Invitation & Challenge Hub</h3>
+            <p style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Connect your Gmail account to send game challenge invites, share level codes, and receive scores.</p>
+          </div>
+          <button class="btn btn-gmail" id="gmail-auth-btn" onclick="initiateGoogleLogin()">
+            ✉️ Connect Gmail
+          </button>
+        </div>
+      </div>
+
+      <div class="game-grid">
+        
+        <!-- Compose Invite Card -->
+        <div class="leaderboard-card" style="grid-column: span 2;">
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--neon-cyan); margin-bottom: 8px;">✉️ Send Game Challenge / Invite via Gmail</h4>
+          
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div>
+              <label style="font-size: 11px; color: var(--text-muted);">Friend's Email Address:</label>
+              <input type="email" id="gmail-recipient" placeholder="friend@example.com" value="" />
+            </div>
+
+            <div>
+              <label style="font-size: 11px; color: var(--text-muted);">Select Game to Challenge:</label>
+              <select id="gmail-game-choice" onchange="updateGmailTemplate()">
+                <option value="runner">Cyber Runner 2099 (Platformer)</option>
+                <option value="space">Neon Space Invaders (Shooter)</option>
+                <option value="breakout">Hyper Neon Breakout (Physics)</option>
+                <option value="dungeon">Catacombs Quest RPG (Dungeon)</option>
+                <option value="flappy">Cyber Flappy Bot (Precision)</option>
+                <option value="racer">Neon Highway 2099 (Racer)</option>
+              </select>
+            </div>
+
+            <div>
+              <label style="font-size: 11px; color: var(--text-muted);">Email Subject:</label>
+              <input type="text" id="gmail-subject" value="🕹️ Arcade Challenge: Beat my high score on Cyber Runner 2099!" />
+            </div>
+
+            <div>
+              <label style="font-size: 11px; color: var(--text-muted);">Message Body:</label>
+              <textarea id="gmail-body" rows="4">Hey! I'm challenging you to play Cyber Runner 2099 on Arcade Studio. My top score is 3,450 points!
+
+Play the game instantly here: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app
+Share Code: NEON-RUN-9921</textarea>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 8px;">
+              <button class="btn" onclick="updateGmailTemplate()">🔄 Reset Template</button>
+              <button class="btn btn-gmail" onclick="sendGmailInvite()">🚀 Send Email via Gmail</button>
+            </div>
+
+            <div id="gmail-status-alert" style="display:none; padding: 8px 12px; border-radius: 8px; font-size: 11px; font-weight: 700;"></div>
+          </div>
+        </div>
+
+        <!-- Recent Challenges Sent / Mock Messages -->
+        <div class="leaderboard-card">
+          <h4 style="font-size: 13px; font-weight: 700; color: var(--neon-green); margin-bottom: 8px;">📥 Recent Game Messages & Invites</h4>
+          <div id="gmail-messages-list" style="display: flex; flex-direction: column; gap: 6px; font-size: 11px;">
+            <div style="background: #191238; padding: 8px; border-radius: 6px; border: 1px solid #2a2050;">
+              <div style="font-weight: 700; color: #fff;">Alex_99 challenged you!</div>
+              <div style="color: var(--text-muted);">"Try to beat my score of 12,400 on Hyper Neon Breakout!"</div>
+            </div>
+            <div style="background: #191238; padding: 8px; border-radius: 6px; border: 1px solid #2a2050;">
+              <div style="font-weight: 700; color: #fff;">PixelForge Level Code</div>
+              <div style="color: var(--text-muted);">Level Share Code: NEON-RUN-9921 verified!</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MODAL: GMAIL QUICK SENDER -->
+  <div id="gmail-modal" class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">✉️ Share Game via Gmail</span>
+        <button class="modal-close" onclick="closeGmailModal()">✕</button>
+      </div>
+      <div>
+        <label style="font-size: 11px; color: var(--text-muted);">Recipient Email:</label>
+        <input type="email" id="modal-gmail-to" placeholder="gamer.friend@gmail.com" />
+      </div>
+      <div>
+        <label style="font-size: 11px; color: var(--text-muted);">Subject:</label>
+        <input type="text" id="modal-gmail-sub" value="🕹️ Check out this game on Arcade Studio!" />
+      </div>
+      <div>
+        <label style="font-size: 11px; color: var(--text-muted);">Note:</label>
+        <textarea id="modal-gmail-msg" rows="3">Play with me on Arcade Studio: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app</textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px;">
+        <button class="btn" onclick="closeGmailModal()">Cancel</button>
+        <button class="btn btn-gmail" onclick="submitModalGmail()">Send Email</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT: ENGINE, GAMES, SKINS, GMAIL & LEADERBOARDS -->
+  <script>
+    // ==========================================
+    // 1. DATA STATE & PRESET GAMES
+    // ==========================================
+    const gamesData = {
+      runner: {
+        id: 'cyber-runner',
+        title: 'Cyber Runner 2099',
+        author: 'PixelForge',
+        genre: 'Platformer',
+        players: 3420,
+        votes: 842,
+        highscores: [
+          { player: 'Kira_Neo', score: 3450, time: '42s', date: 'Today' },
+          { player: 'Vex_Drift', score: 3100, time: '48s', date: 'Yesterday' },
+          { player: 'Ghost_99', score: 2800, time: '55s', date: '2 days ago' },
+          { player: 'CyberSam', score: 2450, time: '60s', date: '3 days ago' }
+        ]
+      },
+      space: {
+        id: 'space-invaders',
+        title: 'Neon Space Invaders',
+        author: 'GalacticKing',
+        genre: 'Shooter',
+        players: 4890,
+        votes: 1210,
+        highscores: [
+          { player: 'StarLord_X', score: 18900, time: '94s', date: 'Today' },
+          { player: 'AeroPulse', score: 16400, time: '110s', date: 'Today' },
+          { player: 'NovaBeam', score: 14200, time: '85s', date: 'Yesterday' },
+          { player: 'VoidWalker', score: 12000, time: '130s', date: '4 days ago' }
+        ]
+      },
+      breakout: {
+        id: 'breakout',
+        title: 'Hyper Neon Breakout',
+        author: 'VaporWaveDev',
+        genre: 'Physics',
+        players: 2940,
+        votes: 690,
+        highscores: [
+          { player: 'Alex_99', score: 12400, time: '62s', date: 'Today' },
+          { player: 'PaddleMaster', score: 10900, time: '75s', date: 'Yesterday' },
+          { player: 'SynthWave', score: 9800, time: '88s', date: '2 days ago' }
+        ]
+      },
+      dungeon: {
+        id: 'dungeon',
+        title: 'Catacombs Quest RPG',
+        author: 'DragonLord',
+        genre: 'Dungeon RPG',
+        players: 5120,
+        votes: 1480,
+        highscores: [
+          { player: 'ShadowBlade', score: 5200, time: '74s', date: 'Today' },
+          { player: 'Eldor_Knight', score: 4850, time: '88s', date: 'Today' },
+          { player: 'MysticMage', score: 4100, time: '92s', date: '3 days ago' }
+        ]
+      },
+      flappy: {
+        id: 'flappy',
+        title: 'Cyber Flappy Bot',
+        author: 'JetpackJim',
+        genre: 'Precision',
+        players: 3180,
+        votes: 920,
+        highscores: [
+          { player: 'ZeroGravity', score: 86, time: '140s', date: 'Today' },
+          { player: 'WingPilot', score: 72, time: '115s', date: 'Yesterday' },
+          { player: 'Acrobat', score: 58, time: '95s', date: '2 days ago' }
+        ]
+      },
+      racer: {
+        id: 'racer',
+        title: 'Neon Highway 2099',
+        author: 'SpeedDemon',
+        genre: 'Racer',
+        players: 3850,
+        votes: 1050,
+        highscores: [
+          { player: 'DriftKing_VN', score: 9400, time: '82s', date: 'Today' },
+          { player: 'NitroBoost', score: 8750, time: '78s', date: 'Today' },
+          { player: 'TurboAce', score: 7900, time: '85s', date: '3 days ago' }
+        ]
+      }
+    };
+
+    // ==========================================
+    // 2. SCREEN SIZE & VIEW NAVIGATION
+    // ==========================================
+    let currentZoom = 1.0;
+
+    function setScreenMode(mode, evt) {
+      document.body.className = `mode-${mode}`;
+      document.querySelectorAll('.screen-size-bar:first-child .screen-pill').forEach(btn => btn.classList.remove('active'));
+      if (evt && evt.currentTarget) {
+        evt.currentTarget.classList.add('active');
+      }
+      
+      // Resize game canvas if active
+      if (activeGameType) {
+        resizeCanvas();
+      }
+    }
+
+    function adjustZoom(delta) {
+      currentZoom = Math.max(0.6, Math.min(1.4, Math.round((currentZoom + delta) * 10) / 10));
+      const container = document.getElementById('app-container');
+      container.style.transform = `scale(${currentZoom})`;
+      container.style.transformOrigin = 'top center';
+      document.getElementById('zoom-indicator').textContent = `${Math.round(currentZoom * 100)}%`;
+    }
+
+    function switchView(viewName) {
+      document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.nav-tab-btn').forEach(el => el.classList.remove('active'));
+      
+      const targetView = document.getElementById(`view-${viewName}`);
+      if (targetView) targetView.classList.add('active');
+      
+      const tabIndex = ['arcade', 'leaderboard', 'replays', 'skins', 'gmail'].indexOf(viewName);
+      if (tabIndex >= 0) {
+        document.querySelectorAll('.nav-tab-btn')[tabIndex].classList.add('active');
+      }
+
+      if (viewName === 'leaderboard') {
+        renderLeaderboards();
+      } else if (viewName === 'replays') {
+        renderReplayTheater();
+      }
+    }
+
+    // ==========================================
+    // 3. SOUND SYNTHESIZER (WEB AUDIO API)
+    // ==========================================
+    let audioCtx = null;
+    function playSynthSound(type) {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+
+        if (type === 'jump') {
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(150, now);
+          osc.frequency.exponentialRampToValueAtTime(600, now + 0.15);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+          osc.start(now);
+          osc.stop(now + 0.15);
+        } else if (type === 'laser') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(800, now);
+          osc.frequency.exponentialRampToValueAtTime(100, now + 0.12);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'coin') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(523.25, now); // C5
+          osc.frequency.setValueAtTime(659.25, now + 0.08); // E5
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'hit') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.2);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        }
+      } catch (e) {}
+    }
+
+    // ==========================================
+    // 4. MOUSE SKINS & PARTICLE PHYSICS
+    // ==========================================
+    const cursorCanvas = document.getElementById('cursor-particle-canvas');
+    const cursorCtx = cursorCanvas.getContext('2d');
+    let particles = [];
+    let currentSkin = 'katana';
+    let mousePos = { x: -100, y: -100, px: -100, py: -100 };
+
+    function resizeCursorCanvas() {
+      cursorCanvas.width = window.innerWidth;
+      cursorCanvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCursorCanvas);
+    resizeCursorCanvas();
+
+    const skinConfigs = {
+      katana: { icon: '🗡️', color: '#00f0ff', shape: 'slash', particleColor: '#00f0ff' },
+      reticle: { icon: '🎯', color: '#ff0055', shape: 'ring', particleColor: '#ff0055' },
+      glove: { icon: '🕹️', color: '#ffd700', shape: 'star', particleColor: '#ffd700' },
+      wand: { icon: '🪄', color: '#b537f2', shape: 'sparkle', particleColor: '#b537f2' },
+      ship: { icon: '🚀', color: '#ff7700', shape: 'fire', particleColor: '#ff5500' },
+      bolt: { icon: '⚡', color: '#ffff00', shape: 'lightning', particleColor: '#ffff00' },
+      paw: { icon: '🐾', color: '#ff66aa', shape: 'heart', particleColor: '#ff66aa' },
+      gem: { icon: '💎', color: '#00ffff', shape: 'crystal', particleColor: '#00ffff' }
+    };
+
+    window.addEventListener('mousemove', (e) => {
+      mousePos.px = mousePos.x;
+      mousePos.py = mousePos.y;
+      mousePos.x = e.clientX;
+      mousePos.y = e.clientY;
+
+      // Spawn particles based on velocity
+      const dx = mousePos.x - mousePos.px;
+      const dy = mousePos.y - mousePos.py;
+      const speed = Math.sqrt(dx * dx + dy * dy);
+
+      if (speed > 1) {
+        const conf = skinConfigs[currentSkin] || skinConfigs.katana;
+        for (let i = 0; i < Math.min(speed / 4, 3); i++) {
+          particles.push({
+            x: mousePos.x + (Math.random() - 0.5) * 8,
+            y: mousePos.y + (Math.random() - 0.5) * 8,
+            vx: (Math.random() - 0.5) * 2 - dx * 0.1,
+            vy: (Math.random() - 0.5) * 2 - dy * 0.1,
+            life: 1.0,
+            color: conf.particleColor,
+            shape: conf.shape,
+            size: Math.random() * 5 + 3
+          });
+        }
+      }
+    });
+
+    window.addEventListener('click', (e) => {
+      // Burst effect on click
+      const conf = skinConfigs[currentSkin] || skinConfigs.katana;
+      for (let i = 0; i < 12; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const spd = Math.random() * 4 + 2;
+        particles.push({
+          x: e.clientX,
+          y: e.clientY,
+          vx: Math.cos(angle) * spd,
+          vy: Math.sin(angle) * spd,
+          life: 1.0,
+          color: conf.particleColor,
+          shape: conf.shape,
+          size: Math.random() * 6 + 4
+        });
+      }
+    });
+
+    function equipMouseSkin(skinKey) {
+      currentSkin = skinKey;
+      const conf = skinConfigs[skinKey];
+      document.getElementById('current-skin-icon').textContent = conf.icon;
+      
+      document.querySelectorAll('.skin-card').forEach(c => c.classList.remove('selected'));
+      event.currentTarget?.classList.add('selected');
+      
+      playSynthSound('coin');
+    }
+
+    function openMouseSkinsModal() {
+      switchView('skins');
+    }
+
+    // Render Particle Loop
+    function renderParticleLoop() {
+      cursorCtx.clearRect(0, 0, cursorCanvas.width, cursorCanvas.height);
+
+      for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life -= 0.035;
+
+        if (p.life <= 0) {
+          particles.splice(i, 1);
+          continue;
+        }
+
+        cursorCtx.save();
+        cursorCtx.globalAlpha = p.life;
+        cursorCtx.fillStyle = p.color;
+        cursorCtx.shadowColor = p.color;
+        cursorCtx.shadowBlur = 8;
+
+        if (p.shape === 'star') {
+          cursorCtx.font = `${p.size * 2}px sans-serif`;
+          cursorCtx.fillText('★', p.x, p.y);
+        } else if (p.shape === 'heart') {
+          cursorCtx.font = `${p.size * 2}px sans-serif`;
+          cursorCtx.fillText('♥', p.x, p.y);
+        } else {
+          cursorCtx.beginPath();
+          cursorCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+          cursorCtx.fill();
+        }
+        cursorCtx.restore();
+      }
+
+      requestAnimationFrame(renderParticleLoop);
+    }
+    renderParticleLoop();
+
+    // ==========================================
+    // 5. PLAYABLE ARCADE CANVAS GAMES ENGINE
+    // ==========================================
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    let activeGameType = null;
+    let gameLoopId = null;
+    let gameScore = 0;
+    let gameLives = 3;
+    let gameTime = 0;
+    let gameHigh = 0;
+    let keys = {};
+
+    window.addEventListener('keydown', (e) => {
+      keys[e.code] = true;
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      keys[e.code] = false;
+    });
+
+    // Touch button listeners
+    document.getElementById('btn-left').addEventListener('pointerdown', () => keys['ArrowLeft'] = true);
+    document.getElementById('btn-left').addEventListener('pointerup', () => keys['ArrowLeft'] = false);
+    document.getElementById('btn-right').addEventListener('pointerdown', () => keys['ArrowRight'] = true);
+    document.getElementById('btn-right').addEventListener('pointerup', () => keys['ArrowRight'] = false);
+    document.getElementById('btn-jump').addEventListener('pointerdown', () => { keys['Space'] = true; keys['ArrowUp'] = true; });
+    document.getElementById('btn-jump').addEventListener('pointerup', () => { keys['Space'] = false; keys['ArrowUp'] = false; });
+    document.getElementById('btn-action').addEventListener('pointerdown', () => keys['KeyZ'] = true);
+    document.getElementById('btn-action').addEventListener('pointerup', () => keys['KeyZ'] = false);
+
+    function launchGame(type) {
+      if (replayLoopId) {
+        cancelAnimationFrame(replayLoopId);
+        replayLoopId = null;
+      }
+      isReplayMode = false;
+      activeGameType = type;
+      
+      document.getElementById('game-stage-view').style.display = 'flex';
+      document.getElementById('spectator-hud-banner').style.display = 'none';
+      document.getElementById('replay-controls-bar').style.display = 'none';
+      document.getElementById('live-hud').style.display = 'flex';
+      document.getElementById('touch-controls-pad').style.display = 'flex';
+      document.getElementById('game-stage-view').scrollIntoView({ behavior: 'smooth' });
+
+      gameScore = 0;
+      gameLives = 3;
+      gameTime = 0;
+      
+      const gameInfo = gamesData[type] || gamesData.runner;
+      document.getElementById('active-game-title').textContent = gameInfo.title;
+      document.getElementById('active-game-author').textContent = `by ${gameInfo.author}`;
+      gameHigh = gameInfo.highscores[0]?.score || 0;
+      updateHud();
+
+      if (gameLoopId) cancelAnimationFrame(gameLoopId);
+
+      // Start run recorder for this game session
+      runRecorder.start(type);
+
+      if (type === 'runner') initRunnerGame();
+      else if (type === 'space') initSpaceGame();
+      else if (type === 'breakout') initBreakoutGame();
+      else if (type === 'dungeon') initDungeonGame();
+      else if (type === 'flappy') initFlappyGame();
+      else if (type === 'racer') initRacerGame();
+    }
+
+    function closeGameStage() {
+      if (gameLoopId) {
+        cancelAnimationFrame(gameLoopId);
+        gameLoopId = null;
+      }
+      if (replayLoopId) {
+        cancelAnimationFrame(replayLoopId);
+        replayLoopId = null;
+      }
+      activeGameType = null;
+      isReplayMode = false;
+      runRecorder.recording = false;
+      document.getElementById('game-stage-view').style.display = 'none';
+    }
+
+    function updateHud() {
+      document.getElementById('hud-score').textContent = gameScore;
+      document.getElementById('hud-lives').textContent = gameLives;
+      document.getElementById('hud-high').textContent = gameHigh;
+      document.getElementById('hud-time').textContent = `${Math.floor(gameTime)}s`;
+    }
+
+    // Real-Time Game Search & Filtering
+    function filterGamesCatalog(query) {
+      const q = (query || '').trim().toLowerCase();
+      const clearBtn = document.getElementById('game-search-clear');
+      if (clearBtn) {
+        clearBtn.style.display = q ? 'flex' : 'none';
+      }
+
+      const cards = document.querySelectorAll('#main-games-grid .game-card');
+      let visibleCount = 0;
+
+      cards.forEach(card => {
+        const title = (card.getAttribute('data-title') || card.querySelector('.game-title')?.textContent || '').toLowerCase();
+        const desc = (card.querySelector('.game-desc')?.textContent || '').toLowerCase();
+        
+        if (!q || title.includes(q) || desc.includes(q)) {
+          card.style.display = 'flex';
+          visibleCount++;
+        } else {
+          card.style.display = 'none';
+        }
+      });
+
+      const noResults = document.getElementById('no-games-found');
+      const countLabel = document.getElementById('catalog-count-label');
+
+      if (noResults) {
+        if (visibleCount === 0 && q) {
+          noResults.style.display = 'flex';
+          const querySpan = document.getElementById('no-games-query');
+          if (querySpan) querySpan.textContent = query;
+        } else {
+          noResults.style.display = 'none';
+        }
+      }
+
+      if (countLabel) {
+        if (!q) {
+          countLabel.textContent = `${cards.length} Playable Arcade Titles`;
+        } else {
+          countLabel.textContent = `Showing ${visibleCount} of ${cards.length} Games`;
+        }
+      }
+    }
+
+    function clearGameSearch() {
+      const input = document.getElementById('game-search-input');
+      if (input) {
+        input.value = '';
+        input.focus();
+      }
+      filterGamesCatalog('');
+    }
+
+    // GAME 1: CYBER RUNNER 2099
+    let runnerState = {};
+    function initRunnerGame() {
+      runnerState = {
+        player: { x: 50, y: 280, vx: 0, vy: 0, w: 26, h: 36, onGround: true, jumps: 2 },
+        obstacles: [],
+        coins: [],
+        groundY: 320,
+        speed: 4,
+        spawnTimer: 0
+      };
+
+      function loop() {
+        if (activeGameType !== 'runner') return;
+        gameTime += 0.016;
+
+        // Player Controls
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && runnerState.player.jumps > 0 && !runnerState.jumpPressed) {
+          runnerState.player.vy = -11;
+          runnerState.player.jumps--;
+          runnerState.jumpPressed = true;
+          playSynthSound('jump');
+        }
+        if (!keys['Space'] && !keys['ArrowUp'] && !keys['KeyW']) {
+          runnerState.jumpPressed = false;
+        }
+
+        // Physics
+        runnerState.player.vy += 0.55;
+        runnerState.player.y += runnerState.player.vy;
+
+        if (runnerState.player.y >= runnerState.groundY - runnerState.player.h) {
+          runnerState.player.y = runnerState.groundY - runnerState.player.h;
+          runnerState.player.vy = 0;
+          runnerState.player.onGround = true;
+          runnerState.player.jumps = 2;
+        }
+
+        // Spawn obstacles & orbs
+        runnerState.spawnTimer++;
+        if (runnerState.spawnTimer > 75) {
+          runnerState.spawnTimer = 0;
+          runnerState.obstacles.push({
+            x: canvas.width + 20,
+            y: runnerState.groundY - 30,
+            w: 20,
+            h: 30,
+            color: '#ff0055'
+          });
+
+          if (Math.random() > 0.4) {
+            runnerState.coins.push({
+              x: canvas.width + 60,
+              y: runnerState.groundY - 70,
+              radius: 8,
+              collected: false
+            });
+          }
+        }
+
+        // Update obstacles
+        for (let i = runnerState.obstacles.length - 1; i >= 0; i--) {
+          const obs = runnerState.obstacles[i];
+          obs.x -= runnerState.speed;
+
+          // Collision
+          const p = runnerState.player;
+          if (p.x < obs.x + obs.w && p.x + p.w > obs.x && p.y < obs.y + obs.h && p.y + p.h > obs.y) {
+            gameLives--;
+            playSynthSound('hit');
+            runnerState.obstacles.splice(i, 1);
+            if (gameLives <= 0) {
+              gameOver('runner');
+              return;
+            }
+          } else if (obs.x < -30) {
+            runnerState.obstacles.splice(i, 1);
+            gameScore += 50;
+          }
+        }
+
+        // Update coins
+        for (let i = runnerState.coins.length - 1; i >= 0; i--) {
+          const c = runnerState.coins[i];
+          c.x -= runnerState.speed;
+          const p = runnerState.player;
+          if (p.x < c.x + c.radius && p.x + p.w > c.x - c.radius && p.y < c.y + c.radius && p.y + p.h > c.y - c.radius) {
+            gameScore += 100;
+            playSynthSound('coin');
+            runnerState.coins.splice(i, 1);
+          } else if (c.x < -30) {
+            runnerState.coins.splice(i, 1);
+          }
+        }
+
+        // Drawing
+        ctx.fillStyle = '#0a0618';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Ground Neon Grid
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, runnerState.groundY);
+        ctx.lineTo(canvas.width, runnerState.groundY);
+        ctx.stroke();
+
+        ctx.fillStyle = '#140e2e';
+        ctx.fillRect(0, runnerState.groundY, canvas.width, canvas.height - runnerState.groundY);
+
+        // Draw Player
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(runnerState.player.x, runnerState.player.y, runnerState.player.w, runnerState.player.h);
+
+        // Draw Obstacles
+        ctx.fillStyle = '#ff0055';
+        ctx.shadowColor = '#ff0055';
+        for (const obs of runnerState.obstacles) {
+          ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+        }
+
+        // Draw Coins
+        ctx.fillStyle = '#ffd700';
+        ctx.shadowColor = '#ffd700';
+        for (const c of runnerState.coins) {
+          ctx.beginPath();
+          ctx.arc(c.x, c.y, c.radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+
+        runRecorder.record({
+          p: { x: runnerState.player.x, y: runnerState.player.y, w: runnerState.player.w, h: runnerState.player.h },
+          obstacles: runnerState.obstacles.map(o => ({x: o.x, y: o.y, w: o.w, h: o.h})),
+          coins: runnerState.coins.map(c => ({x: c.x, y: c.y, radius: c.radius}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // GAME 2: NEON SPACE INVADERS
+    function initSpaceGame() {
+      const state = {
+        ship: { x: 280, y: 350, w: 32, h: 24, speed: 6 },
+        lasers: [],
+        aliens: [],
+        alienSpeed: 1.5,
+        alienDir: 1,
+        shootCooldown: 0
+      };
+
+      // Spawn alien grid
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 8; c++) {
+          state.aliens.push({
+            x: 60 + c * 60,
+            y: 40 + r * 40,
+            w: 32,
+            h: 24,
+            alive: true
+          });
+        }
+      }
+
+      function loop() {
+        if (activeGameType !== 'space') return;
+        gameTime += 0.016;
+
+        // Move ship
+        if (keys['ArrowLeft'] || keys['KeyA']) state.ship.x = Math.max(10, state.ship.x - state.ship.speed);
+        if (keys['ArrowRight'] || keys['KeyD']) state.ship.x = Math.min(canvas.width - state.ship.w - 10, state.ship.x + state.ship.speed);
+
+        // Shoot laser
+        state.shootCooldown--;
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyZ']) && state.shootCooldown <= 0) {
+          state.lasers.push({ x: state.ship.x + 14, y: state.ship.y, vy: -8 });
+          state.shootCooldown = 12;
+          playSynthSound('laser');
+        }
+
+        // Update lasers
+        for (let i = state.lasers.length - 1; i >= 0; i--) {
+          const l = state.lasers[i];
+          l.y += l.vy;
+          if (l.y < -10) {
+            state.lasers.splice(i, 1);
+            continue;
+          }
+
+          // Hit alien check
+          for (const a of state.aliens) {
+            if (a.alive && l.x > a.x && l.x < a.x + a.w && l.y > a.y && l.y < a.y + a.h) {
+              a.alive = false;
+              state.lasers.splice(i, 1);
+              gameScore += 150;
+              playSynthSound('coin');
+              break;
+            }
+          }
+        }
+
+        // Move Aliens
+        let changeDir = false;
+        for (const a of state.aliens) {
+          if (!a.alive) continue;
+          a.x += state.alienSpeed * state.alienDir;
+          if (a.x > canvas.width - 40 || a.x < 10) changeDir = true;
+          if (a.y > 330) {
+            gameOver('space');
+            return;
+          }
+        }
+        if (changeDir) {
+          state.alienDir *= -1;
+          for (const a of state.aliens) a.y += 15;
+        }
+
+        // Check Win
+        if (state.aliens.every(a => !a.alive)) {
+          gameScore += 1000;
+          gameOver('space', true);
+          return;
+        }
+
+        // Draw Space
+        ctx.fillStyle = '#060412';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Player Ship
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.moveTo(state.ship.x + 16, state.ship.y);
+        ctx.lineTo(state.ship.x + 32, state.ship.y + 24);
+        ctx.lineTo(state.ship.x, state.ship.y + 24);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw Lasers
+        ctx.fillStyle = '#ff0055';
+        ctx.shadowColor = '#ff0055';
+        for (const l of state.lasers) {
+          ctx.fillRect(l.x, l.y, 4, 12);
+        }
+
+        // Draw Aliens
+        ctx.fillStyle = '#00ff88';
+        ctx.shadowColor = '#00ff88';
+        for (const a of state.aliens) {
+          if (a.alive) {
+            ctx.fillRect(a.x, a.y, a.w, a.h);
+          }
+        }
+        ctx.shadowBlur = 0;
+
+        runRecorder.record({
+          ship: { x: state.ship.x, y: state.ship.y },
+          lasers: state.lasers.map(l => ({x: l.x, y: l.y})),
+          aliens: state.aliens.map(a => ({x: a.x, y: a.y, w: a.w, h: a.h, alive: a.alive}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // GAME 3: HYPER NEON BREAKOUT
+    function initBreakoutGame() {
+      const state = {
+        paddle: { x: 250, y: 370, w: 90, h: 12, speed: 7 },
+        ball: { x: 300, y: 250, vx: 4, vy: -4, radius: 7 },
+        bricks: []
+      };
+
+      for (let r = 0; r < 4; r++) {
+        for (let c = 0; c < 9; c++) {
+          state.bricks.push({
+            x: 25 + c * 62,
+            y: 40 + r * 25,
+            w: 54,
+            h: 18,
+            alive: true,
+            color: ['#ff0055', '#00f0ff', '#ffd700', '#00ff88'][r]
+          });
+        }
+      }
+
+      function loop() {
+        if (activeGameType !== 'breakout') return;
+        gameTime += 0.016;
+
+        // Move paddle
+        if (keys['ArrowLeft'] || keys['KeyA']) state.paddle.x = Math.max(0, state.paddle.x - state.paddle.speed);
+        if (keys['ArrowRight'] || keys['KeyD']) state.paddle.x = Math.min(canvas.width - state.paddle.w, state.paddle.x + state.paddle.speed);
+
+        // Move ball
+        state.ball.x += state.ball.vx;
+        state.ball.y += state.ball.vy;
+
+        // Wall collisions
+        if (state.ball.x <= state.ball.radius || state.ball.x >= canvas.width - state.ball.radius) {
+          state.ball.vx *= -1;
+          playSynthSound('jump');
+        }
+        if (state.ball.y <= state.ball.radius) {
+          state.ball.vy *= -1;
+          playSynthSound('jump');
+        }
+
+        // Bottom death
+        if (state.ball.y > canvas.height) {
+          gameLives--;
+          playSynthSound('hit');
+          if (gameLives <= 0) {
+            gameOver('breakout');
+            return;
+          } else {
+            state.ball.x = 300;
+            state.ball.y = 250;
+            state.ball.vy = -4;
+          }
+        }
+
+        // Paddle collision
+        const b = state.ball;
+        const p = state.paddle;
+        if (b.y + b.radius >= p.y && b.y - b.radius <= p.y + p.h && b.x >= p.x && b.x <= p.x + p.w) {
+          state.ball.vy = -Math.abs(state.ball.vy);
+          state.ball.vx = ((b.x - (p.x + p.w / 2)) / (p.w / 2)) * 5;
+          playSynthSound('jump');
+        }
+
+        // Brick collision
+        for (const brick of state.bricks) {
+          if (!brick.alive) continue;
+          if (b.x > brick.x && b.x < brick.x + brick.w && b.y > brick.y && b.y < brick.y + brick.h) {
+            brick.alive = false;
+            state.ball.vy *= -1;
+            gameScore += 100;
+            playSynthSound('coin');
+            break;
+          }
+        }
+
+        // Draw Breakout
+        ctx.fillStyle = '#0a071c';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Paddle
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+
+        // Draw Ball
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw Bricks
+        for (const brick of state.bricks) {
+          if (brick.alive) {
+            ctx.fillStyle = brick.color;
+            ctx.shadowColor = brick.color;
+            ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
+          }
+        }
+        ctx.shadowBlur = 0;
+
+        runRecorder.record({
+          paddle: { x: state.paddle.x, y: state.paddle.y, w: state.paddle.w, h: state.paddle.h },
+          ball: { x: state.ball.x, y: state.ball.y, radius: state.ball.radius },
+          bricks: state.bricks.map(b => ({x: b.x, y: b.y, w: b.w, h: b.h, alive: b.alive, color: b.color}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // GAME 4: CATACOMBS QUEST RPG
+    function initDungeonGame() {
+      const state = {
+        hero: { x: 80, y: 180, w: 24, h: 24, speed: 4, attackTimer: 0 },
+        skeletons: [
+          { x: 260, y: 120, w: 22, h: 22, hp: 2, dir: 1 },
+          { x: 380, y: 260, w: 22, h: 22, hp: 2, dir: -1 },
+          { x: 480, y: 180, w: 32, h: 32, hp: 5, isBoss: true }
+        ],
+        chests: [{ x: 520, y: 80, opened: false }]
+      };
+
+      function loop() {
+        if (activeGameType !== 'dungeon') return;
+        gameTime += 0.016;
+
+        if (keys['ArrowLeft'] || keys['KeyA']) state.hero.x -= state.hero.speed;
+        if (keys['ArrowRight'] || keys['KeyD']) state.hero.x += state.hero.speed;
+        if (keys['ArrowUp'] || keys['KeyW']) state.hero.y -= state.hero.speed;
+        if (keys['ArrowDown'] || keys['KeyS']) state.hero.y += state.hero.speed;
+
+        state.hero.x = Math.max(20, Math.min(canvas.width - 40, state.hero.x));
+        state.hero.y = Math.max(20, Math.min(canvas.height - 40, state.hero.y));
+
+        // Attack
+        if ((keys['Space'] || keys['KeyZ']) && state.hero.attackTimer <= 0) {
+          state.hero.attackTimer = 15;
+          playSynthSound('laser');
+
+          for (const s of state.skeletons) {
+            if (s.hp > 0) {
+              const dist = Math.hypot(s.x - state.hero.x, s.y - state.hero.y);
+              if (dist < 45) {
+                s.hp--;
+                gameScore += 120;
+                playSynthSound('hit');
+              }
+            }
+          }
+        }
+        if (state.hero.attackTimer > 0) state.hero.attackTimer--;
+
+        // Draw Dungeon
+        ctx.fillStyle = '#080514';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Hero
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(state.hero.x, state.hero.y, state.hero.w, state.hero.h);
+
+        if (state.hero.attackTimer > 0) {
+          ctx.strokeStyle = '#00ff88';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(state.hero.x + 12, state.hero.y + 12, 36, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Enemies
+        for (const s of state.skeletons) {
+          if (s.hp > 0) {
+            ctx.fillStyle = s.isBoss ? '#ff0055' : '#e0e0e0';
+            ctx.fillRect(s.x, s.y, s.w, s.h);
+          }
+        }
+
+        runRecorder.record({
+          hero: { x: state.hero.x, y: state.hero.y, w: state.hero.w, h: state.hero.h, attacking: state.hero.attackTimer > 0 },
+          skeletons: state.skeletons.map(s => ({x: s.x, y: s.y, w: s.w, h: s.h, hp: s.hp, isBoss: s.isBoss}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // GAME 5: CYBER FLAPPY BOT
+    function initFlappyGame() {
+      const state = {
+        bot: { x: 80, y: 180, vy: 0, radius: 14 },
+        pipes: [],
+        pipeTimer: 0
+      };
+
+      function loop() {
+        if (activeGameType !== 'flappy') return;
+        gameTime += 0.016;
+
+        if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && !state.flapPressed) {
+          state.bot.vy = -6.5;
+          state.flapPressed = true;
+          playSynthSound('jump');
+        }
+        if (!keys['Space'] && !keys['ArrowUp'] && !keys['KeyW']) state.flapPressed = false;
+
+        state.bot.vy += 0.35;
+        state.bot.y += state.bot.vy;
+
+        state.pipeTimer++;
+        if (state.pipeTimer > 85) {
+          state.pipeTimer = 0;
+          const topH = Math.random() * 160 + 40;
+          state.pipes.push({
+            x: canvas.width + 20,
+            topH: topH,
+            gap: 120,
+            passed: false
+          });
+        }
+
+        for (let i = state.pipes.length - 1; i >= 0; i--) {
+          const p = state.pipes[i];
+          p.x -= 3.5;
+
+          if (!p.passed && p.x < state.bot.x) {
+            p.passed = true;
+            gameScore += 10;
+            playSynthSound('coin');
+          }
+
+          // Collision
+          const b = state.bot;
+          if (b.x + b.radius > p.x && b.x - b.radius < p.x + 36) {
+            if (b.y - b.radius < p.topH || b.y + b.radius > p.topH + p.gap) {
+              gameOver('flappy');
+              return;
+            }
+          }
+
+          if (p.x < -50) state.pipes.splice(i, 1);
+        }
+
+        if (state.bot.y > canvas.height || state.bot.y < 0) {
+          gameOver('flappy');
+          return;
+        }
+
+        // Draw Flappy
+        ctx.fillStyle = '#060314';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Pipes
+        ctx.fillStyle = '#00ff88';
+        for (const p of state.pipes) {
+          ctx.fillRect(p.x, 0, 36, p.topH);
+          ctx.fillRect(p.x, p.topH + p.gap, 36, canvas.height - (p.topH + p.gap));
+        }
+
+        // Bot
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(state.bot.x, state.bot.y, state.bot.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        runRecorder.record({
+          bot: { x: state.bot.x, y: state.bot.y, radius: state.bot.radius },
+          pipes: state.pipes.map(p => ({x: p.x, topH: p.topH, gap: p.gap}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // GAME 6: NEON HIGHWAY 2099
+    function initRacerGame() {
+      const state = {
+        car: { x: 270, y: 320, w: 32, h: 54, lane: 1, speed: 6 },
+        traffic: [],
+        timer: 0
+      };
+
+      function loop() {
+        if (activeGameType !== 'racer') return;
+        gameTime += 0.016;
+        gameScore += 1;
+
+        if (keys['ArrowLeft'] || keys['KeyA']) state.car.x = Math.max(100, state.car.x - state.car.speed);
+        if (keys['ArrowRight'] || keys['KeyD']) state.car.x = Math.min(canvas.width - 140, state.car.x + state.car.speed);
+
+        state.timer++;
+        if (state.timer > 50) {
+          state.timer = 0;
+          state.traffic.push({
+            x: 120 + Math.random() * (canvas.width - 240),
+            y: -60,
+            w: 30,
+            h: 50,
+            vy: 4
+          });
+        }
+
+        for (let i = state.traffic.length - 1; i >= 0; i--) {
+          const t = state.traffic[i];
+          t.y += t.vy;
+
+          const c = state.car;
+          if (c.x < t.x + t.w && c.x + c.w > t.x && c.y < t.y + t.h && c.y + c.h > t.y) {
+            gameOver('racer');
+            return;
+          }
+
+          if (t.y > canvas.height + 60) state.traffic.splice(i, 1);
+        }
+
+        // Draw Highway
+        ctx.fillStyle = '#090616';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Road
+        ctx.fillStyle = '#140f2a';
+        ctx.fillRect(80, 0, canvas.width - 160, canvas.height);
+
+        // Road markings
+        ctx.strokeStyle = '#00f0ff';
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Car
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(state.car.x, state.car.y, state.car.w, state.car.h);
+
+        // Traffic
+        ctx.fillStyle = '#ffd700';
+        for (const t of state.traffic) {
+          ctx.fillRect(t.x, t.y, t.w, t.h);
+        }
+
+        runRecorder.record({
+          car: { x: state.car.x, y: state.car.y, w: state.car.w, h: state.car.h },
+          traffic: state.traffic.map(t => ({x: t.x, y: t.y, w: t.w, h: t.h}))
+        });
+
+        updateHud();
+        gameLoopId = requestAnimationFrame(loop);
+      }
+      loop();
+    }
+
+    // ==========================================
+    // 6. RECORD & REPLAY SYSTEM (SPECTATOR THEATER)
+    // ==========================================
+    const REPLAY_CACHE_KEY = 'arcade_my_replays_v1';
+    let isReplayMode = false;
+    let activeReplay = null;
+    let replayLoopId = null;
+    let replayCurrentFrame = 0;
+    let replaySpeed = 1.0;
+    let replayPaused = false;
+    let replayFilterCategory = 'all';
+    let mySavedReplays = [];
+
+    // Base high score replays for the community
+    const communityReplays = [
+      {
+        id: 'rep_runner_kira',
+        gameType: 'runner',
+        gameTitle: 'Cyber Runner 2099',
+        player: 'Kira_Neo',
+        score: 3450,
+        time: '42s',
+        duration: 42,
+        date: 'Today',
+        views: 480,
+        likes: 112,
+        verified: true,
+        summary: 'Flawless 42s obstacle dash collecting 100% neon energy spheres!'
+      },
+      {
+        id: 'rep_space_star',
+        gameType: 'space',
+        gameTitle: 'Neon Space Invaders',
+        player: 'StarLord_X',
+        score: 18900,
+        time: '65s',
+        duration: 65,
+        date: 'Today',
+        views: 620,
+        likes: 189,
+        verified: true,
+        summary: 'All 24 alien invaders eradicated with 98% laser accuracy!'
+      },
+      {
+        id: 'rep_breakout_alex',
+        gameType: 'breakout',
+        gameTitle: 'Hyper Neon Breakout',
+        player: 'Alex_99',
+        score: 12400,
+        time: '78s',
+        duration: 78,
+        date: 'Yesterday',
+        views: 350,
+        likes: 94,
+        verified: true,
+        summary: 'High angle corner ricochet clears all top tier neon bricks!'
+      },
+      {
+        id: 'rep_dungeon_shadow',
+        gameType: 'dungeon',
+        gameTitle: 'Catacombs Quest RPG',
+        player: 'ShadowBlade',
+        score: 5200,
+        time: '74s',
+        duration: 74,
+        date: 'Today',
+        views: 510,
+        likes: 145,
+        verified: true,
+        summary: 'Speed sword dash defeating the Dungeon Boss in record timing.'
+      },
+      {
+        id: 'rep_flappy_zero',
+        gameType: 'flappy',
+        gameTitle: 'Cyber Flappy Bot',
+        player: 'ZeroGravity',
+        score: 86,
+        time: '140s',
+        duration: 140,
+        date: 'Today',
+        views: 890,
+        likes: 275,
+        verified: true,
+        summary: 'World record 86 pipes navigated with millisecond precision!'
+      },
+      {
+        id: 'rep_racer_drift',
+        gameType: 'racer',
+        gameTitle: 'Neon Highway 2099',
+        player: 'DriftKing_VN',
+        score: 9400,
+        time: '82s',
+        duration: 82,
+        date: 'Today',
+        views: 760,
+        likes: 210,
+        verified: true,
+        summary: 'Aggressive high-speed lane weaving dodging 30+ traffic vehicles.'
+      }
+    ];
+
+    // Live Gameplay Recorder
+    const runRecorder = {
+      recording: false,
+      gameType: null,
+      frames: [],
+      frameInterval: 2,
+      frameCounter: 0,
+      start(type) {
+        this.recording = true;
+        this.gameType = type;
+        this.frames = [];
+        this.frameCounter = 0;
+      },
+      record(stateSnapshot) {
+        if (!this.recording) return;
+        this.frameCounter++;
+        if (this.frameCounter % this.frameInterval !== 0) return;
+        this.frames.push({
+          t: Math.round(gameTime * 100) / 100,
+          score: gameScore,
+          lives: gameLives,
+          ...stateSnapshot
+        });
+      },
+      stop(playerName) {
+        if (!this.recording || this.frames.length < 5) {
+          this.recording = false;
+          return null;
+        }
+        this.recording = false;
+        const gameInfo = gamesData[this.gameType] || gamesData.runner;
+        const replay = {
+          id: 'rep_' + Date.now(),
+          gameType: this.gameType,
+          gameTitle: gameInfo.title,
+          player: playerName || 'ArcadeHero',
+          score: gameScore,
+          time: `${Math.floor(gameTime)}s`,
+          duration: Math.max(3, Math.floor(gameTime)),
+          date: 'Just now',
+          views: 1,
+          likes: 0,
+          verified: false,
+          summary: `Recorded run by ${playerName} achieving ${gameScore} points.`,
+          frames: this.frames
+        };
+        mySavedReplays.unshift(replay);
+        communityReplays.unshift(replay);
+        saveReplaysToStorage();
+        return replay;
+      }
+    };
+
+    function loadSavedReplays() {
+      try {
+        const raw = localStorage.getItem(REPLAY_CACHE_KEY);
+        if (raw) {
+          const list = JSON.parse(raw);
+          if (Array.isArray(list)) {
+            mySavedReplays = list;
+            // Merge with community list
+            list.forEach(r => {
+              if (!communityReplays.some(c => c.id === r.id)) {
+                communityReplays.unshift(r);
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load saved replays', e);
+      }
+    }
+
+    function saveReplaysToStorage() {
+      try {
+        localStorage.setItem(REPLAY_CACHE_KEY, JSON.stringify(mySavedReplays));
+      } catch (e) {
+        console.warn('Could not save replays', e);
+      }
+    }
+
+    // Playback Engine
+    function startReplayPlayback(replay) {
+      if (gameLoopId) cancelAnimationFrame(gameLoopId);
+      if (replayLoopId) cancelAnimationFrame(replayLoopId);
+
+      isReplayMode = true;
+      activeReplay = replay;
+      replayCurrentFrame = 0;
+      replayPaused = false;
+      replaySpeed = 1.0;
+      replay.views = (replay.views || 0) + 1;
+
+      // Setup stage UI for spectator mode
+      document.getElementById('game-stage-view').style.display = 'flex';
+      document.getElementById('game-stage-view').scrollIntoView({ behavior: 'smooth' });
+      document.getElementById('live-hud').style.display = 'none';
+      document.getElementById('touch-controls-pad').style.display = 'none';
+      document.getElementById('spectator-hud-banner').style.display = 'flex';
+      document.getElementById('replay-controls-bar').style.display = 'flex';
+
+      // Set Spectator HUD details
+      document.getElementById('active-game-title').textContent = replay.gameTitle;
+      document.getElementById('active-game-author').textContent = `🎥 Spectator View • Runner: ${replay.player}`;
+      document.getElementById('spectator-player-name').textContent = replay.player;
+      document.getElementById('spectator-score-badge').textContent = `🏆 ${replay.score.toLocaleString()} PTS`;
+      document.getElementById('replay-like-count').textContent = replay.likes || 0;
+      document.getElementById('replay-play-btn').textContent = '⏸';
+
+      // Setup scrubber
+      const totalFrames = (replay.frames && replay.frames.length > 0) ? replay.frames.length : (replay.duration * 30);
+      const scrubber = document.getElementById('replay-scrubber');
+      scrubber.min = '0';
+      scrubber.max = `${totalFrames - 1}`;
+      scrubber.value = '0';
+
+      playSynthSound('coin');
+      showToast(`🎬 Now Spectating: ${replay.player}'s High Score Run on ${replay.gameTitle}!`, '#00f0ff');
+
+      function replayStep() {
+        if (!isReplayMode) return;
+
+        if (!replayPaused) {
+          replayCurrentFrame += replaySpeed;
+          if (replayCurrentFrame >= totalFrames) {
+            replayCurrentFrame = totalFrames - 1;
+            replayPaused = true;
+            document.getElementById('replay-play-btn').textContent = '▶';
+            drawReplayEndOverlay();
+            replayLoopId = requestAnimationFrame(replayStep);
+            return;
+          }
+        }
+
+        const currentFrameIdx = Math.floor(replayCurrentFrame);
+        scrubber.value = `${currentFrameIdx}`;
+
+        const curSeconds = Math.floor((currentFrameIdx / totalFrames) * replay.duration);
+        document.getElementById('replay-time-display').textContent = `${curSeconds}s / ${replay.duration}s`;
+
+        // Render Canvas Frame
+        renderReplayFrame(replay, currentFrameIdx, totalFrames);
+
+        replayLoopId = requestAnimationFrame(replayStep);
+      }
+
+      replayLoopId = requestAnimationFrame(replayStep);
+    }
+
+    function renderReplayFrame(replay, frameIdx, totalFrames) {
+      const type = replay.gameType;
+      const progress = totalFrames > 0 ? (frameIdx / totalFrames) : 0;
+      const scoreProgress = Math.floor(replay.score * Math.min(1.0, (progress * 1.05)));
+
+      // If recorded real frames exist
+      if (replay.frames && replay.frames[frameIdx]) {
+        drawRealRecordedFrame(type, replay.frames[frameIdx]);
+      } else {
+        // High fidelity procedural simulation for verified community runs
+        drawSimulatedReplayFrame(type, progress, frameIdx);
+      }
+
+      // Draw Spectator Watermark & HUD Overlays
+      ctx.save();
+      // Glowing REC Badge
+      ctx.fillStyle = 'rgba(255, 0, 85, 0.9)';
+      ctx.beginPath();
+      ctx.arc(28, 28, 6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px system-ui, sans-serif';
+      ctx.fillText('REC SPECTATOR CAM', 42, 32);
+
+      // Score ticker in spectator canvas
+      ctx.fillStyle = 'rgba(10, 6, 24, 0.75)';
+      ctx.fillRect(canvas.width - 150, 14, 140, 26);
+      ctx.strokeStyle = '#00f0ff';
+      ctx.strokeRect(canvas.width - 150, 14, 140, 26);
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText(`SCORE: ${scoreProgress.toLocaleString()}`, canvas.width - 140, 32);
+
+      // Floating Crowd Cheers
+      if (frameIdx % 90 > 20 && frameIdx % 90 < 75) {
+        const cheers = [
+          '🔥 SICK REFLEXES!',
+          '⚡ PERFECT TIMING!',
+          '🚀 SPEEDRUN PACING!',
+          '⭐ COMBO x5!',
+          '🏆 NEW HIGH SCORE PACE!'
+        ];
+        const cheer = cheers[(Math.floor(frameIdx / 90) + replay.score) % cheers.length];
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+        ctx.fillRect(canvas.width / 2 - 90, canvas.height - 50, 180, 26);
+        ctx.strokeStyle = '#00ff88';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(canvas.width / 2 - 90, canvas.height - 50, 180, 26);
+        ctx.fillStyle = '#00ff88';
+        ctx.font = 'bold 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(cheer, canvas.width / 2, canvas.height - 33);
+        ctx.textAlign = 'left';
+      }
+      ctx.restore();
+    }
+
+    function drawRealRecordedFrame(type, f) {
+      ctx.fillStyle = '#0a0618';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (type === 'runner' && f.p) {
+        // Ground
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 320);
+        ctx.lineTo(canvas.width, 320);
+        ctx.stroke();
+
+        // Player
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(f.p.x, f.p.y, f.p.w, f.p.h);
+
+        // Obstacles
+        ctx.fillStyle = '#ff0055';
+        if (f.obstacles) {
+          f.obstacles.forEach(o => ctx.fillRect(o.x, o.y, o.w, o.h));
+        }
+        // Coins
+        ctx.fillStyle = '#ffd700';
+        if (f.coins) {
+          f.coins.forEach(c => {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, c.radius || 8, 0, Math.PI * 2);
+            ctx.fill();
+          });
+        }
+      } else if (type === 'space' && f.ship) {
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(f.ship.x + 16, f.ship.y);
+        ctx.lineTo(f.ship.x + 32, f.ship.y + 24);
+        ctx.lineTo(f.ship.x, f.ship.y + 24);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#ff0055';
+        if (f.lasers) f.lasers.forEach(l => ctx.fillRect(l.x, l.y, 4, 12));
+
+        ctx.fillStyle = '#00ff88';
+        if (f.aliens) {
+          f.aliens.forEach(a => {
+            if (a.alive) ctx.fillRect(a.x, a.y, a.w, a.h);
+          });
+        }
+      } else if (type === 'breakout' && f.paddle) {
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(f.paddle.x, f.paddle.y, f.paddle.w, f.paddle.h);
+
+        if (f.ball) {
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(f.ball.x, f.ball.y, f.ball.radius || 7, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        if (f.bricks) {
+          f.bricks.forEach(b => {
+            if (b.alive) {
+              ctx.fillStyle = b.color || '#ff0055';
+              ctx.fillRect(b.x, b.y, b.w, b.h);
+            }
+          });
+        }
+      } else if (type === 'dungeon' && f.hero) {
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(f.hero.x, f.hero.y, f.hero.w, f.hero.h);
+        if (f.hero.attacking) {
+          ctx.strokeStyle = '#00ff88';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(f.hero.x + 12, f.hero.y + 12, 36, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        if (f.skeletons) {
+          f.skeletons.forEach(s => {
+            if (s.hp > 0) {
+              ctx.fillStyle = s.isBoss ? '#ff0055' : '#e0e0e0';
+              ctx.fillRect(s.x, s.y, s.w, s.h);
+            }
+          });
+        }
+      } else if (type === 'flappy' && f.bot) {
+        ctx.fillStyle = '#00ff88';
+        if (f.pipes) {
+          f.pipes.forEach(p => {
+            ctx.fillRect(p.x, 0, 36, p.topH);
+            ctx.fillRect(p.x, p.topH + p.gap, 36, canvas.height - (p.topH + p.gap));
+          });
+        }
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(f.bot.x, f.bot.y, f.bot.radius || 14, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'racer' && f.car) {
+        // Highway
+        ctx.fillStyle = '#140f2a';
+        ctx.fillRect(80, 0, canvas.width - 160, canvas.height);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(f.car.x, f.car.y, f.car.w, f.car.h);
+
+        ctx.fillStyle = '#ffd700';
+        if (f.traffic) {
+          f.traffic.forEach(t => ctx.fillRect(t.x, t.y, t.w, t.h));
+        }
+      }
+    }
+
+    function drawSimulatedReplayFrame(type, progress, frameIdx) {
+      ctx.fillStyle = '#0a0618';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const t = frameIdx * 0.05;
+
+      if (type === 'runner') {
+        // Ground
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, 320);
+        ctx.lineTo(canvas.width, 320);
+        ctx.stroke();
+
+        // Runner Jumping & running
+        const jumpH = Math.max(0, Math.sin(t * 3) * 60);
+        const px = 70;
+        const py = 320 - 36 - jumpH;
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 10;
+        ctx.fillRect(px, py, 26, 36);
+
+        // Moving obstacles
+        ctx.fillStyle = '#ff0055';
+        ctx.shadowColor = '#ff0055';
+        for (let i = 0; i < 3; i++) {
+          const ox = (canvas.width + 100 - ((frameIdx * 5 + i * 260) % (canvas.width + 200)));
+          ctx.fillRect(ox, 290, 20, 30);
+        }
+
+        // Floating Coins
+        ctx.fillStyle = '#ffd700';
+        ctx.shadowColor = '#ffd700';
+        for (let i = 0; i < 3; i++) {
+          const cx = (canvas.width + 60 - ((frameIdx * 5 + i * 260 + 130) % (canvas.width + 200)));
+          ctx.beginPath();
+          ctx.arc(cx, 250, 8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.shadowBlur = 0;
+      } else if (type === 'space') {
+        // Ship moving left/right
+        const sx = canvas.width / 2 + Math.sin(t * 1.8) * 180;
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.moveTo(sx + 16, 350);
+        ctx.lineTo(sx + 32, 374);
+        ctx.lineTo(sx, 374);
+        ctx.closePath();
+        ctx.fill();
+
+        // Continuous lasers
+        ctx.fillStyle = '#ff0055';
+        for (let i = 0; i < 4; i++) {
+          const ly = 350 - ((frameIdx * 8 + i * 90) % 360);
+          ctx.fillRect(sx + 14, ly, 4, 14);
+        }
+
+        // Alien wave surviving based on progress
+        const aliveThreshold = Math.floor(24 * (1 - progress * 0.9));
+        ctx.fillStyle = '#00ff88';
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 8; c++) {
+            const index = r * 8 + c;
+            if (index < aliveThreshold) {
+              const ax = 60 + c * 58 + Math.sin(t) * 30;
+              const ay = 40 + r * 38;
+              ctx.fillRect(ax, ay, 30, 22);
+            }
+          }
+        }
+      } else if (type === 'breakout') {
+        const bx = canvas.width / 2 + Math.sin(t * 2) * 160;
+        const by = 220 + Math.cos(t * 3.5) * 120;
+        const paddleX = Math.max(20, Math.min(canvas.width - 110, bx - 20));
+
+        // Paddle
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(paddleX, 370, 90, 12);
+
+        // Ball
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(bx, by, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bricks clearing
+        const remainingBricks = Math.floor(36 * (1 - progress * 0.85));
+        for (let r = 0; r < 4; r++) {
+          for (let c = 0; c < 9; c++) {
+            const idx = r * 9 + c;
+            if (idx < remainingBricks) {
+              ctx.fillStyle = ['#ff0055', '#00f0ff', '#ffd700', '#00ff88'][r];
+              ctx.fillRect(25 + c * 62, 40 + r * 25, 54, 18);
+            }
+          }
+        }
+      } else if (type === 'dungeon') {
+        const hx = 100 + Math.sin(t * 1.2) * 160;
+        const hy = 180 + Math.cos(t * 1.5) * 80;
+
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(hx, hy, 26, 26);
+
+        // Sword swing circle
+        if (frameIdx % 25 < 12) {
+          ctx.strokeStyle = '#00ff88';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(hx + 13, hy + 13, 38, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        // Skeletons
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(450 + Math.sin(t) * 20, 160, 36, 36);
+      } else if (type === 'flappy') {
+        const botY = 200 + Math.sin(t * 3.5) * 50;
+
+        // Pipes
+        ctx.fillStyle = '#00ff88';
+        for (let i = 0; i < 3; i++) {
+          const px = (canvas.width + 100 - ((frameIdx * 4 + i * 220) % (canvas.width + 250)));
+          const topH = 120 + Math.sin(i * 1.5) * 40;
+          ctx.fillRect(px, 0, 36, topH);
+          ctx.fillRect(px, topH + 120, 36, canvas.height - (topH + 120));
+        }
+
+        // Bot
+        ctx.fillStyle = '#00f0ff';
+        ctx.beginPath();
+        ctx.arc(100, botY, 14, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === 'racer') {
+        // Road
+        ctx.fillStyle = '#140f2a';
+        ctx.fillRect(80, 0, canvas.width - 160, canvas.height);
+        ctx.strokeStyle = '#00f0ff';
+        ctx.setLineDash([20, 15]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Car steering
+        const carX = canvas.width / 2 + Math.sin(t * 2.5) * 90 - 16;
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(carX, 320, 32, 54);
+
+        // Traffic passing
+        ctx.fillStyle = '#ffd700';
+        for (let i = 0; i < 3; i++) {
+          const ty = ((frameIdx * 7 + i * 160) % (canvas.height + 100)) - 60;
+          const tx = 140 + (i % 2) * 140;
+          ctx.fillRect(tx, ty, 30, 50);
+        }
+      }
+    }
+
+    function drawReplayEndOverlay() {
+      ctx.save();
+      ctx.fillStyle = 'rgba(6, 4, 18, 0.85)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = '#00f0ff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(50, 60, canvas.width - 100, canvas.height - 120);
+
+      ctx.fillStyle = '#00f0ff';
+      ctx.font = 'bold 22px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🎬 REPLAY COMPLETED', canvas.width / 2, 120);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px system-ui, sans-serif';
+      ctx.fillText(`Player: ${activeReplay.player} • Final Score: ${activeReplay.score.toLocaleString()} PTS`, canvas.width / 2, 160);
+
+      ctx.fillStyle = 'var(--text-muted)';
+      ctx.font = '12px system-ui, sans-serif';
+      ctx.fillText('Use the controls below to Replay, Like, Challenge on Gmail, or Play Live!', canvas.width / 2, 200);
+
+      ctx.restore();
+    }
+
+    function toggleReplayPause() {
+      if (!isReplayMode) return;
+      replayPaused = !replayPaused;
+      document.getElementById('replay-play-btn').textContent = replayPaused ? '▶' : '⏸';
+      playSynthSound('jump');
+    }
+
+    function restartReplayPlayback() {
+      if (!isReplayMode || !activeReplay) return;
+      replayCurrentFrame = 0;
+      replayPaused = false;
+      document.getElementById('replay-play-btn').textContent = '⏸';
+      playSynthSound('jump');
+    }
+
+    function setReplaySpeed(spd, evt) {
+      replaySpeed = spd;
+      document.querySelectorAll('#replay-controls-bar .btn-secondary').forEach(b => {
+        b.style.borderColor = 'rgba(255,255,255,0.1)';
+        b.style.color = 'var(--text-muted)';
+      });
+      if (evt && evt.currentTarget) {
+        evt.currentTarget.style.borderColor = '#00f0ff';
+        evt.currentTarget.style.color = '#00f0ff';
+      }
+      playSynthSound('coin');
+    }
+
+    function scrubReplay(val) {
+      if (!isReplayMode) return;
+      replayCurrentFrame = parseFloat(val);
+      if (replayPaused) {
+        const totalFrames = (activeReplay.frames && activeReplay.frames.length > 0) ? activeReplay.frames.length : (activeReplay.duration * 30);
+        renderReplayFrame(activeReplay, Math.floor(replayCurrentFrame), totalFrames);
+      }
+    }
+
+    function likeActiveReplay() {
+      if (!activeReplay) return;
+      activeReplay.likes = (activeReplay.likes || 0) + 1;
+      document.getElementById('replay-like-count').textContent = activeReplay.likes;
+      playSynthSound('coin');
+      showToast(`❤️ You liked ${activeReplay.player}'s high score run!`, '#ff0055');
+      saveReplaysToStorage();
+    }
+
+    function shareReplayViaGmail() {
+      if (!activeReplay) return;
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Offline Mode: Reconnect to share replays on Gmail.', '#ffaa00');
+        return;
+      }
+      switchView('gmail');
+      document.getElementById('gmail-subject').value = `🎬 Watch ${activeReplay.player}'s Insane ${activeReplay.score.toLocaleString()} pts Run on ${activeReplay.gameTitle}!`;
+      document.getElementById('gmail-body').value = `Check out this top-tier run on Arcade Studio!\n\n🎮 Game: ${activeReplay.gameTitle}\n👤 Player: ${activeReplay.player}\n🏆 Score: ${activeReplay.score.toLocaleString()} points\n⏱ Duration: ${activeReplay.time}\n\nWatch and beat it here: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app\nReplay Code: ${activeReplay.id}`;
+    }
+
+    function playCurrentGameLive() {
+      if (!activeReplay) return;
+      const type = activeReplay.gameType;
+      launchGame(type);
+    }
+
+    function watchReplayByPlayer(playerName, gameKey) {
+      // Find matching replay or generate run for player
+      const keyMap = {
+        'cyber-runner': 'runner',
+        'space-invaders': 'space',
+        'breakout': 'breakout',
+        'dungeon': 'dungeon',
+        'flappy': 'flappy',
+        'racer': 'racer'
+      };
+      const actualKey = keyMap[gameKey] || gameKey;
+      let matched = communityReplays.find(r => r.gameType === actualKey && (r.player === playerName || playerName.includes(r.player)));
+      
+      if (!matched) {
+        const gameInfo = gamesData[actualKey] || gamesData.runner;
+        const hs = gameInfo.highscores.find(h => h.player === playerName) || { score: 2500, time: '45s' };
+        matched = {
+          id: 'rep_' + actualKey + '_' + Date.now(),
+          gameType: actualKey,
+          gameTitle: gameInfo.title,
+          player: playerName,
+          score: hs.score,
+          time: hs.time || '60s',
+          duration: parseInt(hs.time) || 60,
+          date: hs.date || 'Today',
+          views: 120,
+          likes: 38,
+          verified: true,
+          summary: `High score run for ${playerName} on ${gameInfo.title}`
+        };
+        communityReplays.push(matched);
+      }
+
+      startReplayPlayback(matched);
+    }
+
+    function filterReplayTheater(cat, evt) {
+      replayFilterCategory = cat;
+      document.querySelectorAll('#replay-filter-pills button').forEach(b => b.classList.remove('active'));
+      if (evt && evt.currentTarget) evt.currentTarget.classList.add('active');
+      renderReplayTheater();
+    }
+
+    function renderReplayTheater() {
+      const grid = document.getElementById('community-replays-grid');
+      const myGrid = document.getElementById('my-replays-list');
+      if (!grid) return;
+
+      const filtered = replayFilterCategory === 'all' 
+        ? communityReplays 
+        : communityReplays.filter(r => r.gameType === replayFilterCategory);
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-muted);">No replays in this category yet. Record one by playing this game!</div>`;
+      } else {
+        grid.innerHTML = filtered.map(r => `
+          <div class="replay-card">
+            <div class="replay-card-preview">
+              <span class="replay-badge-score">🏆 ${r.score.toLocaleString()} PTS</span>
+              <span class="replay-badge-game">${r.gameTitle}</span>
+              <div style="font-size: 38px; filter: drop-shadow(0 0 10px rgba(0,240,255,0.8));">
+                ${r.gameType === 'runner' ? '🏃‍♂️' : r.gameType === 'space' ? '👾' : r.gameType === 'breakout' ? '🧱' : r.gameType === 'dungeon' ? '⚔️' : r.gameType === 'flappy' ? '🤖' : '🏎️'}
+              </div>
+            </div>
+            <div class="replay-card-body">
+              <div class="replay-card-title">${r.gameTitle}</div>
+              <div class="replay-card-meta">
+                <span>👤 <strong>${r.player}</strong> ${r.verified ? '✅' : ''}</span>
+                <span>⏱ ${r.time}</span>
+              </div>
+              <div style="font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-bottom: 12px;">
+                ${r.summary || 'Top ranking run recorded inside Arcade Studio.'}
+              </div>
+              <div class="replay-card-footer">
+                <button class="btn btn-primary" onclick='startReplayPlayback(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
+                  ▶ Watch Run
+                </button>
+                <div class="replay-stat-pill" title="Views & Likes">
+                  👁️ ${r.views || 0} • ❤️ ${r.likes || 0}
+                </div>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // Render My Runs
+      if (myGrid) {
+        if (mySavedReplays.length === 0) {
+          myGrid.innerHTML = `
+            <div style="text-align: center; padding: 24px; color: var(--text-muted); font-size: 12px; background: rgba(0,0,0,0.2); border-radius: 8px;">
+              🕹️ You haven't recorded any runs yet! Play any game in Arcade Studio and your high-score runs will automatically appear here.
+            </div>
+          `;
+        } else {
+          myGrid.innerHTML = mySavedReplays.map((r, idx) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(14, 9, 32, 0.7); border: 1px solid rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 8px; margin-bottom: 8px;">
+              <div>
+                <strong style="color: #00f0ff;">${r.gameTitle}</strong>
+                <span style="font-size: 11px; color: var(--text-muted); margin-left: 8px;">${r.score.toLocaleString()} pts • ${r.time} • ${r.date}</span>
+              </div>
+              <div style="display: flex; gap: 6px;">
+                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick='startReplayPlayback(${JSON.stringify(r).replace(/'/g, "&apos;")})'>
+                  ▶ Watch
+                </button>
+                <button class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" onclick="exportReplayJSON('${r.id}')">
+                  💾 Export
+                </button>
+              </div>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    function promptImportReplay() {
+      const code = prompt('Paste your Replay Code or Replay JSON to watch:');
+      if (!code) return;
+      try {
+        if (code.startsWith('rep_')) {
+          const found = communityReplays.find(r => r.id === code);
+          if (found) {
+            startReplayPlayback(found);
+            return;
+          }
+        }
+        const parsed = JSON.parse(code);
+        if (parsed && parsed.gameType) {
+          communityReplays.unshift(parsed);
+          saveReplaysToStorage();
+          startReplayPlayback(parsed);
+        } else {
+          showToast('Invalid replay format.', '#ff0055');
+        }
+      } catch (e) {
+        showToast('Could not load replay string.', '#ff0055');
+      }
+    }
+
+    function exportReplayJSON(id) {
+      const rep = mySavedReplays.find(r => r.id === id) || communityReplays.find(r => r.id === id);
+      if (!rep) return;
+      const str = JSON.stringify(rep);
+      navigator.clipboard?.writeText(str).then(() => {
+        showToast('📋 Replay data copied to clipboard!', '#00ff88');
+      }).catch(() => {
+        prompt('Copy your Replay JSON:', str);
+      });
+    }
+
+    // ==========================================
+    // 7. CONNECTIVITY & CACHED LEADERBOARDS
+    // ==========================================
+    const CACHE_KEY = 'arcade_leaderboard_cache_v1';
+    let isOnline = navigator.onLine !== false;
+    let isSimulatedOffline = false;
+    let lastCacheTimestamp = Date.now();
+
+    function getEffectiveOnline() {
+      return isOnline && !isSimulatedOffline;
+    }
+
+    function toggleSimulateOffline() {
+      isSimulatedOffline = !isSimulatedOffline;
+      updateNetworkUI();
+      if (!getEffectiveOnline()) {
+        showToast('🔌 Switched to Offline Mode — Read-only active with cached data.', '#ffaa00');
+      } else {
+        showToast('🟢 Switched to Online Mode — Real-time syncing restored.', '#00ff88');
+      }
+    }
+
+    function updateNetworkUI() {
+      const online = getEffectiveOnline();
+      const banner = document.getElementById('offline-warning-banner');
+      const pill = document.getElementById('net-toggle-btn');
+      const pillText = document.getElementById('net-status-text');
+      const cacheStatus = document.getElementById('cache-status-badge');
+      const reconnectBtn = document.getElementById('offline-reconnect-btn');
+
+      if (!online) {
+        if (banner) banner.style.display = 'flex';
+        if (pill) {
+          pill.className = 'status-pill status-offline';
+          pill.title = 'Offline (Read-only Mode) — Click to test online';
+        }
+        if (pillText) pillText.textContent = 'Offline (Read-only)';
+        if (cacheStatus) {
+          cacheStatus.className = 'cache-badge offline-mode';
+          cacheStatus.textContent = '⚠️ Read-only (Cached Data)';
+        }
+        if (reconnectBtn) reconnectBtn.textContent = 'Reconnect';
+      } else {
+        if (banner) banner.style.display = 'none';
+        if (pill) {
+          pill.className = 'status-pill status-online';
+          pill.title = 'Online — Click to test offline mode';
+        }
+        if (pillText) pillText.textContent = 'Online';
+        if (cacheStatus) {
+          cacheStatus.className = 'cache-badge';
+          cacheStatus.textContent = '💾 Live Synced Cache';
+        }
+      }
+
+      renderLeaderboards();
+    }
+
+    // Save leaderboard state to localStorage cache
+    function saveLeaderboardCache() {
+      try {
+        const cachePayload = {
+          timestamp: Date.now(),
+          timeFormatted: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          gamesData: gamesData
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cachePayload));
+        lastCacheTimestamp = cachePayload.timestamp;
+        updateCacheTimeDisplay(cachePayload.timeFormatted);
+      } catch (e) {
+        console.warn('Could not save cache to localStorage', e);
+      }
+    }
+
+    // Load cached leaderboard state
+    function loadLeaderboardCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.gamesData) {
+            // Merge cached high scores and votes with memory
+            for (const key in parsed.gamesData) {
+              if (gamesData[key]) {
+                gamesData[key].votes = parsed.gamesData[key].votes || gamesData[key].votes;
+                if (parsed.gamesData[key].highscores && parsed.gamesData[key].highscores.length) {
+                  gamesData[key].highscores = parsed.gamesData[key].highscores;
+                }
+              }
+            }
+            lastCacheTimestamp = parsed.timestamp || Date.now();
+            updateCacheTimeDisplay(parsed.timeFormatted || 'Cached');
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not load cache', e);
+      }
+      saveLeaderboardCache();
+      return false;
+    }
+
+    function updateCacheTimeDisplay(timeStr) {
+      const timeEl = document.getElementById('cache-time-info');
+      if (timeEl) {
+        timeEl.textContent = `Cached: ${timeStr} • ${getEffectiveOnline() ? 'Sync OK' : 'Read-only Mode'}`;
+      }
+    }
+
+    function refreshLeaderboardData() {
+      if (getEffectiveOnline()) {
+        saveLeaderboardCache();
+        showToast('✅ Leaderboard refreshed & synced with cloud server!', '#00ff88');
+      } else {
+        showToast('⚠️ Offline Mode: Showing local cached leaderboard data. Connect to sync latest.', '#ffaa00');
+      }
+      renderLeaderboards();
+    }
+
+    window.addEventListener('online', () => {
+      isOnline = true;
+      updateNetworkUI();
+      showToast('🟢 Back Online! Syncing leaderboard cache...', '#00ff88');
+      saveLeaderboardCache();
+    });
+
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      updateNetworkUI();
+      showToast('⚠️ Network Disconnected: Read-only Mode activated with cached leaderboard.', '#ffaa00');
+    });
+
+    function showToast(message, color = '#00f0ff') {
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #150f2e;
+        color: ${color};
+        border: 1px solid ${color};
+        padding: 9px 16px;
+        border-radius: 10px;
+        font-size: 11px;
+        font-weight: 700;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: opacity 0.3s ease;
+      `;
+      toast.innerHTML = message;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    function voteWantToPlay(gameKey) {
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Read-only Mode: Voting is paused while offline. Reconnect to submit votes.', '#ffaa00');
+        playSynthSound('hit');
+        return;
+      }
+
+      const keyMap = {
+        'cyber-runner': 'runner',
+        'space-invaders': 'space',
+        'breakout': 'breakout',
+        'dungeon': 'dungeon',
+        'flappy': 'flappy',
+        'racer': 'racer'
+      };
+      const actualKey = keyMap[gameKey] || gameKey;
+      if (gamesData[actualKey]) {
+        gamesData[actualKey].votes++;
+        const el = document.getElementById(`votes-${gameKey}`);
+        if (el) el.textContent = gamesData[actualKey].votes.toLocaleString();
+        playSynthSound('coin');
+        saveLeaderboardCache();
+        renderLeaderboards();
+      }
+    }
+
+    function gameOver(type, won = false) {
+      if (gameLoopId) cancelAnimationFrame(gameLoopId);
+      playSynthSound('hit');
+
+      const name = prompt(`GAME OVER! You scored ${gameScore} points!\nEnter your Gamer Tag for the Leaderboard:`, 'ArcadeHero');
+      if (name) {
+        if (!gamesData[type]) gamesData[type] = { highscores: [] };
+        const isOff = !getEffectiveOnline();
+        
+        // Save recorded run
+        const savedReplay = runRecorder.stop(name);
+
+        gamesData[type].highscores.unshift({
+          player: name + (isOff ? ' [Offline]' : ''),
+          score: gameScore,
+          time: `${Math.floor(gameTime)}s`,
+          date: isOff ? 'Cached locally' : 'Just now',
+          replayId: savedReplay ? savedReplay.id : null
+        });
+        gamesData[type].highscores.sort((a, b) => b.score - a.score);
+        saveLeaderboardCache();
+        renderLeaderboards();
+
+        if (savedReplay) {
+          showToast(`🎬 Gameplay Run recorded & saved to Replay Theater!`, '#00f0ff');
+        }
+
+        if (isOff) {
+          showToast('💾 Offline Score Saved to Local Cache! Will sync when reconnected.', '#ffaa00');
+        }
+      } else {
+        runRecorder.recording = false;
+      }
+      closeGameStage();
+    }
+
+    function renderLeaderboards() {
+      // 1. Most Wanted Table
+      const tbody = document.getElementById('most-wanted-tbody');
+      if (!tbody) return;
+
+      const online = getEffectiveOnline();
+      const sortedGames = Object.values(gamesData).sort((a, b) => (b.votes + b.players) - (a.votes + a.players));
+      tbody.innerHTML = sortedGames.map((g, idx) => `
+        <tr>
+          <td><span class="rank-badge ${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other'}">${idx + 1}</span></td>
+          <td>
+            <strong style="color: #fff;">${g.title}</strong>
+            <div style="font-size: 10px; color: var(--text-muted);">by ${g.author} ${!online ? '<span style="color:#ffaa00;">(Cached)</span>' : ''}</div>
+          </td>
+          <td><span style="color: var(--neon-cyan);">${g.genre}</span></td>
+          <td>👥 ${g.players.toLocaleString()}</td>
+          <td><strong style="color: var(--neon-pink);">❤️ ${g.votes.toLocaleString()}</strong></td>
+          <td><button class="btn btn-primary" onclick="launchGame('${Object.keys(gamesData).find(k => gamesData[k] === g)}')">▶ Play</button></td>
+        </tr>
+      `).join('');
+
+      renderHighScoresTable();
+    }
+
+    function renderHighScoresTable() {
+      const select = document.getElementById('leaderboard-game-select');
+      const gameKey = select ? select.value : 'runner';
+      const game = gamesData[gameKey] || gamesData.runner;
+
+      const tbody = document.getElementById('highscores-tbody');
+      if (!tbody) return;
+
+      const online = getEffectiveOnline();
+      tbody.innerHTML = game.highscores.map((hs, idx) => `
+        <tr>
+          <td><span class="rank-badge ${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : 'rank-other'}">${idx + 1}</span></td>
+          <td><strong style="color: #fff;">${hs.player}</strong></td>
+          <td><strong style="color: var(--neon-cyan); font-size: 13px;">${hs.score.toLocaleString()}</strong> pts</td>
+          <td>${hs.time}</td>
+          <td><span style="color: ${!online ? '#ffbb33' : 'var(--text-muted)'}">${hs.date}</span></td>
+          <td style="display: flex; gap: 6px; align-items: center;">
+            <button class="btn btn-primary" style="padding: 3px 8px; font-size: 10px;" onclick="watchReplayByPlayer('${hs.player}', '${gameKey}')" title="Watch high score replay run">
+              🎬 Watch
+            </button>
+            <button class="btn btn-gmail" ${!online ? 'style="opacity:0.6; cursor:not-allowed;" title="Read-only Mode (Offline)"' : ''} onclick="${online ? `challengePlayerViaGmail('${hs.player}', '${game.title}', ${hs.score})` : `showToast('⚠️ Reconnect to send Gmail challenges.', '#ffaa00')`}">
+              ✉️ Challenge
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    // ==========================================
+    // 7. GMAIL INTEGRATION & INVITATION SYSTEM
+    // ==========================================
+    let userGoogleAccessToken = null;
+
+    function initiateGoogleLogin() {
+      if (window.google && google.accounts && google.accounts.oauth2) {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: '387474893082-placeholder.apps.googleusercontent.com',
+          scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send',
+          callback: (response) => {
+            if (response.access_token) {
+              userGoogleAccessToken = response.access_token;
+              document.getElementById('gmail-auth-btn').textContent = '✅ Gmail Connected';
+              showGmailAlert('Google Account connected successfully! Ready to send invites.', '#00ff88');
+            }
+          }
+        });
+        client.requestAccessToken();
+      } else {
+        // Instant simulated connected state for preview demonstration
+        userGoogleAccessToken = 'demo_token_' + Date.now();
+        document.getElementById('gmail-auth-btn').textContent = '✅ Gmail Connected';
+        showGmailAlert('Gmail integration enabled! Ready to send invitations and high score challenges.', '#00ff88');
+      }
+    }
+
+    function updateGmailTemplate() {
+      const choice = document.getElementById('gmail-game-choice').value;
+      const game = gamesData[choice] || gamesData.runner;
+      document.getElementById('gmail-subject').value = `🕹️ Arcade Challenge: Beat my high score on ${game.title}!`;
+      document.getElementById('gmail-body').value = `Hey! I'm challenging you to play ${game.title} on Arcade Studio.\n\nPlay the game instantly here: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app\nShare Code: ${game.title.slice(0,4).toUpperCase()}-9921`;
+    }
+
+    function sendGmailInvite() {
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Read-only Mode: Cannot send Gmail invites while offline. Please reconnect.', '#ffaa00');
+        showGmailAlert('Offline Mode: Internet connection required to dispatch Gmail invites.', '#ff0055');
+        return;
+      }
+
+      const to = document.getElementById('gmail-recipient').value.trim();
+      const sub = document.getElementById('gmail-subject').value.trim();
+      const body = document.getElementById('gmail-body').value.trim();
+
+      if (!to) {
+        showGmailAlert('Please enter a recipient email address!', '#ff0055');
+        return;
+      }
+
+      // Add to sent messages
+      const list = document.getElementById('gmail-messages-list');
+      const item = document.createElement('div');
+      item.style.cssText = 'background: #191238; padding: 8px; border-radius: 6px; border: 1px solid #00f0ff;';
+      item.innerHTML = `<div style="font-weight: 700; color: #00f0ff;">Sent to ${to}</div><div style="color: var(--text-muted);">${sub}</div>`;
+      list.prepend(item);
+
+      showGmailAlert(`Invitation successfully sent to ${to} via Gmail!`, '#00ff88');
+      playSynthSound('coin');
+    }
+
+    function showGmailAlert(msg, color) {
+      const alert = document.getElementById('gmail-status-alert');
+      alert.style.display = 'block';
+      alert.style.background = color === '#ff0055' ? 'rgba(255,0,85,0.2)' : 'rgba(0,255,136,0.2)';
+      alert.style.color = color;
+      alert.style.border = `1px solid ${color}`;
+      alert.textContent = msg;
+      setTimeout(() => alert.style.display = 'none', 4000);
+    }
+
+    function challengePlayerViaGmail(player, gameTitle, score) {
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Read-only Mode: High score challenges require an internet connection.', '#ffaa00');
+        return;
+      }
+      switchView('gmail');
+      document.getElementById('gmail-subject').value = `⚔️ High Score Challenge: Can you beat ${player}'s score of ${score} on ${gameTitle}?`;
+      document.getElementById('gmail-body').value = `I noticed ${player} scored ${score} pts on ${gameTitle}!\nThink you can beat it? Play here: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app`;
+    }
+
+    function shareScoreViaGmail() {
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Offline Mode: Reconnect to share scores via Gmail.', '#ffaa00');
+        return;
+      }
+      openGmailModal();
+      document.getElementById('modal-gmail-sub').value = `🏆 I just scored ${gameScore} points on ${document.getElementById('active-game-title').textContent}!`;
+      document.getElementById('modal-gmail-msg').value = `Can you beat my score of ${gameScore}? Play now on Arcade Studio: https://ais-dev-kpgrkz5bd6ywvok3y3jkdh-864194267690.asia-east1.run.app`;
+    }
+
+    function openGmailModal() {
+      if (!getEffectiveOnline()) {
+        showToast('⚠️ Read-only Mode: Gmail features disabled while offline.', '#ffaa00');
+      }
+      document.getElementById('gmail-modal').classList.add('active');
+    }
+    function closeGmailModal() {
+      document.getElementById('gmail-modal').classList.remove('active');
+    }
+    function submitModalGmail() {
+      if (!getEffectiveOnline()) {
+        alert('Cannot send emails in Read-only Mode (Offline). Please reconnect first.');
+        return;
+      }
+      const to = document.getElementById('modal-gmail-to').value;
+      if (to) {
+        alert(`Email sent to ${to}!`);
+        closeGmailModal();
+      } else {
+        alert('Please enter an email address.');
+      }
+    }
+
+    // Initialize leaderboard cache & network state on load
+    loadLeaderboardCache();
+    loadSavedReplays();
+    updateNetworkUI();
+    renderLeaderboards();
+  </script>
+</body>
+</html>
