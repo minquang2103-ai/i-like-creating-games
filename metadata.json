@@ -1,0 +1,6 @@
+{
+  "name": "Arcade Studio",
+  "description": "Create, design, test, and share custom playable games across multiple genres with visual level editors and instant community play.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
